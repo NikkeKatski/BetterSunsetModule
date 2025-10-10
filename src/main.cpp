@@ -14,23 +14,36 @@
 #include <BetterSMS/module.hxx>
 #include <BetterSMS/settings.hxx>
 #include <BetterSMS/stage.hxx>
+#include <raw_fn.hxx>
+#include <rand.h>
+#include <BetterSMS/debug.hxx>
+#include <JDrama/JDRActor.hxx>
+#include <MarioUtil/MathUtil.hxx>
+#include <GX.h>
+//#include <JGeometry/JGMMatrix.hxx>
+//#include <JGeometry/JGMUtil.hxx>
 
-/*
-/ Example module that logs to the console and draws to the screen during gameplay
-*/
-
-static int getTextWidth(J2DTextBox *textbox) {
-    const size_t textLength = strlen(textbox->mStrPtr);
-
-    size_t textWidth = 0;
-    for (int i = 0; i < textLength; ++i) {
-        JUTFont::TWidth width;
-        textbox->mFont->getWidthEntry(textbox->mStrPtr[i], &width);
-        textWidth += width.mWidth;
-    }
-
-    return textWidth + (Max(textLength - 1, 0) * textbox->mCharSpacing);
+#if 1
+#define drawNear ((int (*)(...))0x801e99a8)
+#define drawFar  ((int (*)(...))0x801E9880)
+Mtx empty = {}; //im goat
+void drawInterruptNear(void *grassGroup) {
+    gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
+    GXLoadPosMtxImm(empty, 0x0);
+    drawNear(grassGroup);
 }
+SMS_PATCH_BL(0x801e929c, drawInterruptNear);
+
+void drawInterruptFar(void* grassGroup) {
+    gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
+    GXLoadPosMtxImm(empty, 0x0);
+    drawFar(grassGroup);
+}
+SMS_PATCH_BL(0x801e9314, drawInterruptFar);
+
+SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
+#endif
+
 
 /*
 / Settings
@@ -408,70 +421,67 @@ static const u8 sSaveIcon[] = {
 
 static BetterSMS::Settings::SettingsGroup sSettingsGroup(1, 0, BetterSMS::Settings::Priority::MODE);
 
-static s32 sCoordX, sCoordY = 0;
-static s32 sSpeedX, sSpeedY = 1;
-static BetterSMS::Settings::IntSetting sXSpeedSetting("X Speed", &sSpeedX);
-static BetterSMS::Settings::IntSetting sYSpeedSetting("Y Speed", &sSpeedY);
-
-static J2DTextBox *sOurTextBox         = nullptr;
-static J2DTextBox *sOurTextBoxBackDrop = nullptr;
-static bool sXTravelsRight, sYTravelsDown = true;
+static u8 sColorRed, sColorGreen, sColorBlue = 255;
+static BetterSMS::Settings::IntSetting sRedSetting("FireRed", &sColorRed);
+static BetterSMS::Settings::IntSetting sGreenSetting("LeafGreen", &sColorGreen);
+static BetterSMS::Settings::IntSetting sBlueSetting("B L U E", &sColorBlue);
 
 /*
 / Module Info
 */
 
-static BetterSMS::ModuleInfo sModuleInfo("Demo Module", 1, 1, &sSettingsGroup);
+static BetterSMS::ModuleInfo sModuleInfo("Sunset Module+", 1, 1, &sSettingsGroup);
 
-/*
-/ Callbacks
-*/
+//static void* buffer = new u8[640*448];
+static u32 *grassTop = (u32 *)0x8040c960;
+static u32 *grassBot = (u32 *)0x8040c964;
+static u32 GrassDefault[2] = {*grassTop, *grassBot};
 
-BETTER_SMS_FOR_CALLBACK static void onStageInit(TMarDirector *director) {
-    sOurTextBox = new J2DTextBox(gpSystemFont->mFont, "Hello Screen!");
-    {
-        sOurTextBox->mGradientTop    = {160, 210, 10, 255};  // RGBA
-        sOurTextBox->mGradientBottom = {240, 150, 10, 255};  // RGBA
-    }
-
-    sOurTextBoxBackDrop = new J2DTextBox(gpSystemFont->mFont, "Hello Screen!");
-    {
-        sOurTextBoxBackDrop->mGradientTop    = {0, 0, 0, 255};  // RGBA
-        sOurTextBoxBackDrop->mGradientBottom = {0, 0, 0, 255};  // RGBA
-    }
-
-    sCoordX = (BetterSMS::getScreenRenderWidth() / 2) - (getTextWidth(sOurTextBox) / 2);
-    sCoordY = (480 - sOurTextBox->mCharSizeY) / 2;
-
-    OSReport("Textbox initialization successful!\n");
+void setGrass(const u32 color[2]) {
+    *grassTop = color[0];
+    *grassBot = color[1];
 }
 
-BETTER_SMS_FOR_CALLBACK static void onStageUpdate(TMarDirector *director) {
-    if (sXTravelsRight)
-        sCoordX += sSpeedX;
-    else
-        sCoordX -= sSpeedX;
+const u32 SunsetGrass[2]     = {0x7E8736ff, 0x216118ff};  // change this
+const u32 SunsetGrassDark[2] = {0x5C581Dff, 0x172502ff};
+const u32 TwilightGrass[2]   = {0x316C3Eff, 0x105216ff};
 
-    if (sYTravelsDown)
-        sCoordY += sSpeedY;
-    else
-        sCoordY -= sSpeedY;
+void recolorGrass(TMarDirector *director) {
+    u16 areaID = director->mAreaID;
+    u16 sceneID;
+    sceneID = areaID << 8;
+    sceneID |= director->mEpisodeID;
 
-    if (sCoordX >= BetterSMS::getScreenRenderWidth() - getTextWidth(sOurTextBox))
-        sXTravelsRight = false;
-    else if (sCoordX <= -BetterSMS::getScreenRatioAdjustX())
-        sXTravelsRight = true;
-
-    if (sCoordY >= (480 - sOurTextBox->mCharSizeY))
-        sYTravelsDown = false;
-    else if (sCoordY <= 32)
-        sYTravelsDown = true;
+    switch (sceneID) {
+    case 0x0800:
+        setGrass(TwilightGrass);
+        break;
+    case 0x0802:
+        setGrass(TwilightGrass);
+        break;
+    case 0x0804:
+        setGrass(TwilightGrass);
+        break;
+    case 0x0806:
+        setGrass(TwilightGrass);
+        break;
+    case 0x1700:
+        setGrass(SunsetGrassDark);
+        break;
+    case 0x2C00:
+        setGrass(SunsetGrassDark);
+        break;
+    default:
+        setGrass(SunsetGrass);
+        break;
+    }
 }
 
-BETTER_SMS_FOR_CALLBACK static void onStageDraw2D(TMarDirector *director,
-                                                  const J2DOrthoGraph *ortho) {
-    sOurTextBoxBackDrop->draw(sCoordX + 1, sCoordY + 2);  // Draw backdrop text to the screen
-    sOurTextBox->draw(sCoordX, sCoordY);                  // Draw text to the screen
+void DoMist(TMarDirector *director) {
+    //if (buffer == nullptr)
+        //return;
+    //draw_mist__FUsUsUsUsPv(0, 0, SMSGetGameRenderWidth__Fv(), SMSGetGameRenderHeight__Fv(), gay);
+    return;
 }
 
 // Module definition
@@ -480,20 +490,28 @@ static void initModule() {
     OSReport("Initializing Module...\n");
 
     // Register callbacks
-    BetterSMS::Stage::addInitCallback(onStageInit);
-    BetterSMS::Stage::addUpdateCallback(onStageUpdate);
-    BetterSMS::Stage::addDraw2DCallback(onStageDraw2D);
+    //BetterSMS::Stage::addInitCallback(onStageInit);
+    //BetterSMS::Stage::addUpdateCallback(onStageUpdate);
+    //BetterSMS::Stage::addDraw2DCallback(onStageDraw2D);
+    BetterSMS::Stage::addInitCallback(recolorGrass);
+    //BetterSMS::Stage::addUpdateCallback(DoMist);
+
+    //BetterSMS::setDebugMode(true);
+
+    //BetterSMS::Debug::addUpdateCallback();
 
     // Register settings
-    sXSpeedSetting.setValueRange({-10, 10, 1});
-    sYSpeedSetting.setValueRange({-10, 10, 1});
-    sSettingsGroup.addSetting(&sXSpeedSetting);
-    sSettingsGroup.addSetting(&sYSpeedSetting);
+    sRedSetting.setValueRange({0, 255, 5});
+    sGreenSetting.setValueRange({0, 255, 5});
+    sBlueSetting.setValueRange({0, 255, 5});
+    sSettingsGroup.addSetting(&sRedSetting);
+    sSettingsGroup.addSetting(&sGreenSetting);
+    sSettingsGroup.addSetting(&sBlueSetting);
     {
         auto &saveInfo        = sSettingsGroup.getSaveInfo();
         saveInfo.mSaveName    = BetterSMS::Settings::getGroupName(sSettingsGroup);
         saveInfo.mBlocks      = 1;
-        saveInfo.mGameCode    = 'GMSB';
+        saveInfo.mGameCode    = 'SUNS';
         saveInfo.mCompany     = 0x3031;  // '01'
         saveInfo.mBannerFmt   = CARD_BANNER_CI;
         saveInfo.mBannerImage = reinterpret_cast<const ResTIMG *>(sSaveBnr);
@@ -507,7 +525,7 @@ static void initModule() {
 }
 
 // Definition block
-KURIBO_MODULE_BEGIN("OurModule", "JoshuaMK", "v1.0") {
+KURIBO_MODULE_BEGIN("Scalie Pride Month", "Axolotl", "v1.0") {
     // Set the load and unload callbacks to our registration functions
     KURIBO_EXECUTE_ON_LOAD { initModule(); }
 }

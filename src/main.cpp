@@ -52,7 +52,7 @@ class grassObj {
 public:
     u8 data[0x14]; //use 0x13 for something
     float grassFloor;   // 0x14
-    u8 data2[0x50];     // 0x18
+    u32 data2[0x14];     // 0x18 We can use 0x6 - 0x9
     u32 triCount;       // 0x68
     triangle *tris;     // 0x6c
     bool *shTris;   // 0x70
@@ -74,21 +74,29 @@ SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
 static const TBGCheckData *floorBuffer = new TBGCheckData;
 
 #define JSysNew ((int (*)(...))0x802c3ca4)
+#define shadeList ((bool *)grassGroup->data2[0x7])
 void initGrassShade(grassObj *grassGroup) {
+    //OSReport("%p %p %p %p\n", grassGroup->data2[0x0], grassGroup->data2[0x1],
+    //         grassGroup->data2[0x2], grassGroup->data2[0x3]);
+    //OSReport("4 %p %p %p %p\n", grassGroup->data2[0x4], grassGroup->data2[0x5],
+    //         grassGroup->data2[0x6], grassGroup->data2[0x7]);
+    //OSReport("8 %p %p %p %p\n", grassGroup->data2[0x8], grassGroup->data2[0x9],
+    //         grassGroup->data2[0xa], grassGroup->data2[0xb]);
     triangle triVar;
-    if (grassGroup->data2[0x20]) return;
-    grassGroup->data2[0x20] = true;
-    grassGroup->shTris = (bool *)JSysNew(grassGroup->triCount * sizeof(bool));
+    if (grassGroup->data2[0x8]) return;
+    grassGroup->data2[0x8] = true;
+    grassGroup->data2[0x7] = JSysNew(grassGroup->triCount * sizeof(bool));
     for (int i = 0; i < grassGroup->triCount; i++) {
         triVar = grassGroup->tris[i];
         gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 80.0f, triVar.z, 0, &floorBuffer);
         if (floorBuffer->mValue == 1) {
-            grassGroup->shTris[i] = true;
+            shadeList[i] = true;
         } else {
-            grassGroup->shTris[i] = false;
+            shadeList[i] = false;
         }
     }
 }
+
 
 Mtx empty = {}; //im goat
 void altDrawNear(grassObj *grassGroup) {
@@ -107,7 +115,7 @@ void altDrawNear(grassObj *grassGroup) {
         GXBegin(0x90, 0, grassGroup->triCount * 3);
         for (int i = 0; i < grassGroup->triCount; i = i + 1) {
             triVar = grassGroup->tris[i];
-            useAlt = grassGroup->shTris[i];
+            useAlt = shadeList[i];
 
             GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z - DAT_803fa2b0);
             GXColor1x8(useAlt ? 0 : 3);

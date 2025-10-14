@@ -20,34 +20,112 @@
 #include <JDrama/JDRActor.hxx>
 #include <MarioUtil/MathUtil.hxx>
 #include <GX.h>
+#include <settings.hxx>
+#include <Map/MapCollisionData.hxx>
 //#include <JGeometry/JGMMatrix.hxx>
 //#include <JGeometry/JGMUtil.hxx>
 
+const u32 SunsetGrass[3]     = {0x7E8736ff, 0x216118ff, 0x0};
+const u32 SunsetGrassDark[3] = {0x5C581Dff, 0x172502ff, 0x006100ff};
+const u32 TwilightGrass[3]   = {0x316C3Eff, 0x105216ff, 0x0};
+
 #if 1
-#define drawNear ((int (*)(...))0x801e99a8)
-#define drawFar  ((int (*)(...))0x801E9880)
-Mtx empty = {}; //im goat
-void drawInterruptNear(void *grassGroup) {
-    gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
-    GXLoadPosMtxImm(empty, 0x0);
-    drawNear(grassGroup);
-}
-SMS_PATCH_BL(0x801e929c, drawInterruptNear);
-
-void drawInterruptFar(void* grassGroup) {
-    gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
-    GXLoadPosMtxImm(empty, 0x0);
-    drawFar(grassGroup);
-}
-SMS_PATCH_BL(0x801e9314, drawInterruptFar);
-
-SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
+SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);
+SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);
+SMS_WRITE_32(SMS_PORT_REGION(0x801494E0, 0, 0, 0), 0x63c00000);
 #endif
 
+#if 1
+struct triangle {
+public:
+    float x;
+    float y;
+    float z;
+};
+struct trishort {
+public:
+    short x;
+    short y;
+    short z;
+};
+class grassObj {
+public:
+    u8 data[0x14]; //use 0x13 for something
+    float grassFloor;   // 0x14
+    u8 data2[0x50];     // 0x18
+    u32 triCount;       // 0x68
+    triangle *tris;     // 0x6c
+    bool *shTris;   // 0x70
+    u32 unk2;           // 0x74
+    u32 unk3;           // 0x78
+};
+class grassManager {
+public:
+    u8 unk[0x20];
+    float *data;        // 0x20
+    float *shData;      // 0x24
+};
+
+#define _mDrawVec            *(float *)0x803fa2a8
+#define DAT_803fa2b0         *(float *)0x803fa2b0
+#define gpMapObjGrassManager (*((grassManager **)0x8040df7c))
+SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
+
+static const TBGCheckData *floorBuffer = new TBGCheckData;
+
+#define JSysNew ((int (*)(...))0x802c3ca4)
+void initGrassShade(grassObj *grassGroup) {
+    triangle triVar;
+    if (grassGroup->data2[0x20]) return;
+    grassGroup->data2[0x20] = true;
+    grassGroup->shTris = (bool *)JSysNew(grassGroup->triCount * sizeof(bool));
+    for (int i = 0; i < grassGroup->triCount; i++) {
+        triVar = grassGroup->tris[i];
+        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 80.0f, triVar.z, 0, &floorBuffer);
+        if (floorBuffer->mValue == 1) {
+            grassGroup->shTris[i] = true;
+        } else {
+            grassGroup->shTris[i] = false;
+        }
+    }
+}
+
+Mtx empty = {}; //im goat
+void altDrawNear(grassObj *grassGroup) {
+    initGrassShade(grassGroup);
+    triangle triVar;
+    u8 flrVal;
+    bool useAlt;
+    u32 *altColor1 = (u32 *)0x8040c958;
+    *altColor1     = 0x0a3000ff;
+
+    if (grassGroup->unk3 == 0) {
+        gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
+        GXLoadPosMtxImm(empty, 0x0);
+
+        GXSetArray(0xb, (void *)0x8040c958, 4);
+        GXBegin(0x90, 0, grassGroup->triCount * 3);
+        for (int i = 0; i < grassGroup->triCount; i = i + 1) {
+            triVar = grassGroup->tris[i];
+            useAlt = grassGroup->shTris[i];
+
+            GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z - DAT_803fa2b0);
+            GXColor1x8(useAlt ? 0 : 3);
+            GXPosition3f32(triVar.x + gpMapObjGrassManager->data[i % 9], triVar.y, triVar.z);
+            GXColor1x8(useAlt ? 0 : 2);
+            GXPosition3f32(triVar.x + _mDrawVec, grassGroup->grassFloor, triVar.z + DAT_803fa2b0);
+            GXColor1x8(useAlt ? 0 : 3);
+        }
+    }
+    return;
+}
+SMS_PATCH_B(0x801e99a8, altDrawNear);
+#endif
 
 /*
 / Settings
 */
+
 
 static const u8 sSaveBnr[] = {
     0x09, 0x00, 0x00, 0x60, 0x00, 0x20, 0x00, 0x00, 0x01, 0x02, 0x00, 0x88, 0x00, 0x00, 0x0c, 0x20,
@@ -421,10 +499,13 @@ static const u8 sSaveIcon[] = {
 
 static BetterSMS::Settings::SettingsGroup sSettingsGroup(1, 0, BetterSMS::Settings::Priority::MODE);
 
-static u8 sColorRed, sColorGreen, sColorBlue = 255;
-static BetterSMS::Settings::IntSetting sRedSetting("FireRed", &sColorRed);
-static BetterSMS::Settings::IntSetting sGreenSetting("LeafGreen", &sColorGreen);
-static BetterSMS::Settings::IntSetting sBlueSetting("B L U E", &sColorBlue);
+static sElemTeamSetting ElemTeam;
+static sLeadStageSetting LeadStage;
+static sLeadCoderSetting LeadCoder;
+static sLeadComposerSetting LeadComposer;
+static sPizzaGuySetting PizzaGuy;
+static sModuleDevSetting ModuleDev;
+static sPlaceholderSetting Placeholder;
 
 /*
 / Module Info
@@ -441,10 +522,6 @@ void setGrass(const u32 color[2]) {
     *grassTop = color[0];
     *grassBot = color[1];
 }
-
-const u32 SunsetGrass[2]     = {0x7E8736ff, 0x216118ff};  // change this
-const u32 SunsetGrassDark[2] = {0x5C581Dff, 0x172502ff};
-const u32 TwilightGrass[2]   = {0x316C3Eff, 0x105216ff};
 
 void recolorGrass(TMarDirector *director) {
     u16 areaID = director->mAreaID;
@@ -501,12 +578,15 @@ static void initModule() {
     //BetterSMS::Debug::addUpdateCallback();
 
     // Register settings
-    sRedSetting.setValueRange({0, 255, 5});
-    sGreenSetting.setValueRange({0, 255, 5});
-    sBlueSetting.setValueRange({0, 255, 5});
-    sSettingsGroup.addSetting(&sRedSetting);
-    sSettingsGroup.addSetting(&sGreenSetting);
-    sSettingsGroup.addSetting(&sBlueSetting);
+    sSettingsGroup.addSetting(&ElemTeam);
+    sSettingsGroup.addSetting(&LeadStage);
+    sSettingsGroup.addSetting(&LeadCoder);
+    sSettingsGroup.addSetting(&LeadComposer);
+    sSettingsGroup.addSetting(&PizzaGuy);
+    sSettingsGroup.addSetting(&ModuleDev);
+    sSettingsGroup.addSetting(&Placeholder);
+
+
     {
         auto &saveInfo        = sSettingsGroup.getSaveInfo();
         saveInfo.mSaveName    = BetterSMS::Settings::getGroupName(sSettingsGroup);

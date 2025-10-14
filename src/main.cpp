@@ -55,19 +55,21 @@ public:
     u32 data2[0x14];     // 0x18 We can use 0x6 - 0x9
     u32 triCount;       // 0x68
     triangle *tris;     // 0x6c
-    bool *shTris;   // 0x70
-    u32 unk2;           // 0x74
+    trishort *shTris;   // 0x70
+    short *shHeight;           // 0x74
     u32 unk3;           // 0x78
 };
 class grassManager {
 public:
     u8 unk[0x20];
     float *data;        // 0x20
-    float *shData;      // 0x24
+    short *shData;      // 0x24
 };
 
-#define _mDrawVec            *(float *)0x803fa2a8
-#define DAT_803fa2b0         *(float *)0x803fa2b0
+#define _mDrawVec             *(float *)0x803fa2a8
+#define _mDrawVecS16          *(s16 *)0x8040df74
+#define VertexOffset          *(float *)0x803fa2b0
+#define s16VertexOffset       *(s16 *)0x8040df78
 #define gpMapObjGrassManager (*((grassManager **)0x8040df7c))
 SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
 
@@ -75,14 +77,10 @@ static const TBGCheckData *floorBuffer = new TBGCheckData;
 
 #define JSysNew ((int (*)(...))0x802c3ca4)
 #define shadeList ((bool *)grassGroup->data2[0x7])
+
 void initGrassShade(grassObj *grassGroup) {
-    //OSReport("%p %p %p %p\n", grassGroup->data2[0x0], grassGroup->data2[0x1],
-    //         grassGroup->data2[0x2], grassGroup->data2[0x3]);
-    //OSReport("4 %p %p %p %p\n", grassGroup->data2[0x4], grassGroup->data2[0x5],
-    //         grassGroup->data2[0x6], grassGroup->data2[0x7]);
-    //OSReport("8 %p %p %p %p\n", grassGroup->data2[0x8], grassGroup->data2[0x9],
-    //         grassGroup->data2[0xa], grassGroup->data2[0xb]);
     triangle triVar;
+    //trishort trishVar;
     if (grassGroup->data2[0x8]) return;
     grassGroup->data2[0x8] = true;
     grassGroup->data2[0x7] = JSysNew(grassGroup->triCount * sizeof(bool));
@@ -102,6 +100,7 @@ Mtx empty = {}; //im goat
 void altDrawNear(grassObj *grassGroup) {
     initGrassShade(grassGroup);
     triangle triVar;
+    trishort trishVar;
     u8 flrVal;
     bool useAlt;
     u32 *altColor1 = (u32 *)0x8040c958;
@@ -111,17 +110,28 @@ void altDrawNear(grassObj *grassGroup) {
         gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
         GXLoadPosMtxImm(empty, 0x0);
 
+        GXSetVtxAttrFmt(0, 9, 1, 3, 0);  // require s16 for pos
+        GXSetVtxAttrFmt(0, 0xb, 1, 5, 0);  // require u8 for color
+        GXSetVtxDesc(9, 1);
+        GXSetVtxDesc(0xb, 2);
+
         GXSetArray(0xb, (void *)0x8040c958, 4);
         GXBegin(0x90, 0, grassGroup->triCount * 3);
+
+        s16 floorS16 = (s16)(grassGroup->grassFloor);
         for (int i = 0; i < grassGroup->triCount; i = i + 1) {
-            triVar = grassGroup->tris[i];
+            triVar   = grassGroup->tris[i];
+            //trishVar = grassGroup->shTris[i];
             useAlt = shadeList[i];
 
-            GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z - DAT_803fa2b0);
+            //GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z - vertexOffset);
+            GXPosition3s16(triVar.x - _mDrawVec, floorS16, triVar.z - VertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
-            GXPosition3f32(triVar.x + gpMapObjGrassManager->data[i % 9], triVar.y, triVar.z);
+            //GXPosition3f32(triVar.x + gpMapObjGrassManager->data[i % 9], triVar.y, triVar.z);
+            GXPosition3s16(triVar.x + gpMapObjGrassManager->shData[i % 9], triVar.y, triVar.z);
             GXColor1x8(useAlt ? 0 : 2);
-            GXPosition3f32(triVar.x + _mDrawVec, grassGroup->grassFloor, triVar.z + DAT_803fa2b0);
+            //GXPosition3f32(triVar.x + _mDrawVec, grassGroup->grassFloor, triVar.z + vertexOffset);
+            GXPosition3s16(triVar.x + _mDrawVec, floorS16, triVar.z + VertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
         }
     }

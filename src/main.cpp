@@ -123,7 +123,6 @@ void altDrawNear(grassObj *grassGroup) {
             triVar   = grassGroup->tris[i];
             //trishVar = grassGroup->shTris[i];
             useAlt = shadeList[i];
-
             //GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z - vertexOffset);
             GXPosition3s16(triVar.x - _mDrawVec, floorS16, triVar.z - VertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
@@ -541,7 +540,7 @@ void setGrass(const u32 color[2]) {
     *grassBot = color[1];
 }
 
-void recolorGrass(TMarDirector *director) {
+void grassColorInit(TMarDirector *director) {
     u16 areaID = director->mAreaID;
     u16 sceneID;
     sceneID = areaID << 8;
@@ -588,7 +587,7 @@ static void initModule() {
     //BetterSMS::Stage::addInitCallback(onStageInit);
     //BetterSMS::Stage::addUpdateCallback(onStageUpdate);
     //BetterSMS::Stage::addDraw2DCallback(onStageDraw2D);
-    BetterSMS::Stage::addInitCallback(recolorGrass);
+    BetterSMS::Stage::addInitCallback(grassColorInit);
     //BetterSMS::Stage::addUpdateCallback(DoMist);
 
     //BetterSMS::setDebugMode(true);

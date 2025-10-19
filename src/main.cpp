@@ -24,125 +24,11 @@
 #include <Map/MapCollisionData.hxx>
 //#include <JGeometry/JGMMatrix.hxx>
 //#include <JGeometry/JGMUtil.hxx>
+#include <grass.hxx>
 
-const u32 SunsetGrass[3]     = {0x7E8736ff, 0x216118ff, 0x0};
-const u32 SunsetGrassDark[3] = {0x5C581Dff, 0x172502ff, 0x006100ff};
-const u32 TwilightGrass[3]   = {0x316C3Eff, 0x105216ff, 0x0};
-
-#if 1
-SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);
+SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);
 SMS_WRITE_32(SMS_PORT_REGION(0x801494E0, 0, 0, 0), 0x63c00000);
-#endif
-
-#if 1
-struct triangle {
-public:
-    float x;
-    float y;
-    float z;
-};
-struct trishort {
-public:
-    short x;
-    short y;
-    short z;
-};
-class grassObj {
-public:
-    u8 data[0x14]; //use 0x13 for something
-    float grassFloor;   // 0x14
-    u32 data2[0x14];     // 0x18 We can use 0x6 - 0x9
-    u32 triCount;       // 0x68
-    triangle *tris;     // 0x6c
-    trishort *shTris;   // 0x70
-    short *shHeight;           // 0x74
-    u32 unk3;           // 0x78
-};
-class grassManager {
-public:
-    u8 unk[0x20];
-    float *data;        // 0x20
-    short *shData;      // 0x24
-};
-
-#define _mDrawVec             *(float *)0x803fa2a8
-#define _mDrawVecS16          *(s16 *)0x8040df74
-#define VertexOffset          *(float *)0x803fa2b0
-#define s16VertexOffset       *(s16 *)0x8040df78
-#define gpMapObjGrassManager (*((grassManager **)0x8040df7c))
-SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
-
-static const TBGCheckData *floorBuffer = new TBGCheckData;
-
-#define JSysNew ((int (*)(...))0x802c3ca4)
-#define shadeList ((bool *)grassGroup->data2[0x7])
-
-void initGrassShade(grassObj *grassGroup) {
-    triangle triVar;
-    //trishort trishVar;
-    if (grassGroup->data2[0x8]) return;
-    grassGroup->data2[0x8] = true;
-    grassGroup->data2[0x7] = JSysNew(grassGroup->triCount * sizeof(bool));
-    for (int i = 0; i < grassGroup->triCount; i++) {
-        triVar = grassGroup->tris[i];
-        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 80.0f, triVar.z, 0, &floorBuffer);
-        if (floorBuffer->mValue == 1) {
-            shadeList[i] = true;
-        } else {
-            shadeList[i] = false;
-        }
-    }
-}
-
-
-Mtx empty = {}; //im goat
-void altDrawNear(grassObj *grassGroup) {
-    initGrassShade(grassGroup);
-    triangle triVar;
-    trishort trishVar;
-    u8 flrVal;
-    bool useAlt;
-    u32 *altColor1 = (u32 *)0x8040c958;
-    *altColor1     = 0x0a3000ff;
-
-    if (grassGroup->unk3 == 0) {
-        gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
-        GXLoadPosMtxImm(empty, 0x0);
-
-        GXSetVtxAttrFmt(0, 9, 1, 3, 0);  // require s16 for pos
-        GXSetVtxAttrFmt(0, 0xb, 1, 5, 0);  // require u8 for color
-        GXSetVtxDesc(9, 1);
-        GXSetVtxDesc(0xb, 2);
-
-        GXSetArray(0xb, (void *)0x8040c958, 4);
-        GXBegin(0x90, 0, grassGroup->triCount * 3);
-
-        s16 floorS16 = (s16)(grassGroup->grassFloor);
-        for (int i = 0; i < grassGroup->triCount; i = i + 1) {
-            triVar   = grassGroup->tris[i];
-            //trishVar = grassGroup->shTris[i];
-            useAlt = shadeList[i];
-            //GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z - vertexOffset);
-            GXPosition3s16(triVar.x - _mDrawVec, floorS16, triVar.z - VertexOffset);
-            GXColor1x8(useAlt ? 0 : 3);
-            //GXPosition3f32(triVar.x + gpMapObjGrassManager->data[i % 9], triVar.y, triVar.z);
-            GXPosition3s16(triVar.x + gpMapObjGrassManager->shData[i % 9], triVar.y, triVar.z);
-            GXColor1x8(useAlt ? 0 : 2);
-            //GXPosition3f32(triVar.x + _mDrawVec, grassGroup->grassFloor, triVar.z + vertexOffset);
-            GXPosition3s16(triVar.x + _mDrawVec, floorS16, triVar.z + VertexOffset);
-            GXColor1x8(useAlt ? 0 : 3);
-        }
-    }
-    return;
-}
-SMS_PATCH_B(0x801e99a8, altDrawNear);
-#endif
-
-/*
-/ Settings
-*/
-
 
 static const u8 sSaveBnr[] = {
     0x09, 0x00, 0x00, 0x60, 0x00, 0x20, 0x00, 0x00, 0x01, 0x02, 0x00, 0x88, 0x00, 0x00, 0x0c, 0x20,
@@ -584,15 +470,7 @@ static void initModule() {
     OSReport("Initializing Module...\n");
 
     // Register callbacks
-    //BetterSMS::Stage::addInitCallback(onStageInit);
-    //BetterSMS::Stage::addUpdateCallback(onStageUpdate);
-    //BetterSMS::Stage::addDraw2DCallback(onStageDraw2D);
     BetterSMS::Stage::addInitCallback(grassColorInit);
-    //BetterSMS::Stage::addUpdateCallback(DoMist);
-
-    //BetterSMS::setDebugMode(true);
-
-    //BetterSMS::Debug::addUpdateCallback();
 
     // Register settings
     sSettingsGroup.addSetting(&ElemTeam);
@@ -622,7 +500,7 @@ static void initModule() {
 }
 
 // Definition block
-KURIBO_MODULE_BEGIN("Scalie Pride Month", "Axolotl", "v1.0") {
+KURIBO_MODULE_BEGIN("Sunset Module", "Axolotl", "v1.0") {
     // Set the load and unload callbacks to our registration functions
     KURIBO_EXECUTE_ON_LOAD { initModule(); }
 }

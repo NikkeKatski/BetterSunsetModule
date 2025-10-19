@@ -1,6 +1,6 @@
 #include <grass.hxx>
 
-void initGrassShade(grassObj *grassGroup) {
+void initGrassShade(TGrassGroup *grassGroup) {
     triangle triVar;
     if (grassGroup->data2[0x8])
         return;
@@ -20,7 +20,7 @@ void initGrassShade(grassObj *grassGroup) {
 
 Mtx empty = {};
 SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
-void altDrawNear(grassObj *grassGroup) {
+void altDrawNear(TGrassGroup *grassGroup) {
     initGrassShade(grassGroup);
     triangle triVar;
     trishort trishVar;
@@ -41,20 +41,15 @@ void altDrawNear(grassObj *grassGroup) {
         GXSetArray(0xb, altColor1, 4);
         GXBegin(0x90, 0, grassGroup->triCount * 3);
 
-        s16 floorS16 = (s16)(grassGroup->grassFloor);
+        s16 floorS16 = (s16)grassGroup->grassFloor;
         for (int i = 0; i < grassGroup->triCount; i = i + 1) {
             triVar = grassGroup->tris[i];
             // trishVar = grassGroup->shTris[i];
             useAlt = shadeList[i];
-            // GXPosition3f32(triVar.x - _mDrawVec, grassGroup->grassFloor, triVar.z -
-            // vertexOffset);
             GXPosition3s16(triVar.x - _mDrawVec, floorS16, triVar.z - VertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
-            // GXPosition3f32(triVar.x + gpMapObjGrassManager->data[i % 9], triVar.y, triVar.z);
             GXPosition3s16(triVar.x + gpMapObjGrassManager->shData[i % 9], triVar.y, triVar.z);
             GXColor1x8(useAlt ? 0 : 2);
-            // GXPosition3f32(triVar.x + _mDrawVec, grassGroup->grassFloor, triVar.z +
-            // vertexOffset);
             GXPosition3s16(triVar.x + _mDrawVec, floorS16, triVar.z + VertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
         }

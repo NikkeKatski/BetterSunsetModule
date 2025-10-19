@@ -28,7 +28,7 @@ public:
     short z;
 };
 
-class grassObj {
+class TGrassGroup {
 public:
     u8 data[0x14];     // use 0x13 for something
     float grassFloor;  // 0x14
@@ -58,6 +58,6 @@ static const TBGCheckData *floorBuffer = new TBGCheckData;
 #define JSysNew   ((int (*)(...))0x802c3ca4)
 #define shadeList ((bool *)grassGroup->data2[0x7])
 
-void initGrassShade(grassObj *grassGroup);
+void initGrassShade(TGrassGroup *grassGroup);
 
-void altDrawNear(grassObj *grassGroup);
+void altDrawNear(TGrassGroup *grassGroup);

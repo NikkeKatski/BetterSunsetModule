@@ -8,8 +8,7 @@ void initGrassShade(TGrassGroup *grassGroup) {
     grassGroup->data2[0x7] = JSysNew(grassGroup->triCount * sizeof(bool));
     for (int i = 0; i < grassGroup->triCount; i++) {
         triVar = grassGroup->tris[i];
-        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 80.0f, triVar.z, 0,
-                                        &floorBuffer);
+        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 80.0f, triVar.z, 0, &floorBuffer);
         if (floorBuffer->mValue == 1) {
             shadeList[i] = true;
         } else {
@@ -18,12 +17,13 @@ void initGrassShade(TGrassGroup *grassGroup) {
     }
 }
 
+#if 1
 Mtx empty = {};
 SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
 void altDrawNear(TGrassGroup *grassGroup) {
     initGrassShade(grassGroup);
     triangle triVar;
-    trishort trishVar;
+    //trishort trishVar;
     u8 flrVal;
     bool useAlt;
     u32 *altColor1 = (u32 *)0x8040c958;
@@ -44,7 +44,6 @@ void altDrawNear(TGrassGroup *grassGroup) {
         s16 floorS16 = (s16)grassGroup->grassFloor;
         for (int i = 0; i < grassGroup->triCount; i = i + 1) {
             triVar = grassGroup->tris[i];
-            // trishVar = grassGroup->shTris[i];
             useAlt = shadeList[i];
             GXPosition3s16(triVar.x - _mDrawVec, floorS16, triVar.z - VertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
@@ -57,3 +56,4 @@ void altDrawNear(TGrassGroup *grassGroup) {
     return;
 }
 SMS_PATCH_B(0x801e99a8, altDrawNear);
+#endif

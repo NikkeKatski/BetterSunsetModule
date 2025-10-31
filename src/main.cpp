@@ -25,6 +25,7 @@
 //#include <JGeometry/JGMMatrix.hxx>
 //#include <JGeometry/JGMUtil.hxx>
 #include <grass.hxx>
+#include "decomp.cpp"
 
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);

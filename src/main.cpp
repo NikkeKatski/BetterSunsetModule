@@ -14,6 +14,7 @@
 #include <BetterSMS/module.hxx>
 #include <BetterSMS/settings.hxx>
 #include <BetterSMS/stage.hxx>
+#include <BetterSMS/object.hxx>
 #include <raw_fn.hxx>
 #include <rand.h>
 #include <BetterSMS/debug.hxx>
@@ -24,7 +25,9 @@
 #include <Map/MapCollisionData.hxx>
 //#include <JGeometry/JGMMatrix.hxx>
 //#include <JGeometry/JGMUtil.hxx>
-#include <grass.hxx>
+
+#include "grass.hxx"
+#include "screen_filter.hxx"
 
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);
@@ -416,7 +419,6 @@ static sPlaceholderSetting Placeholder;
 
 static BetterSMS::ModuleInfo sModuleInfo("Sunset Module+", 1, 1, &sSettingsGroup);
 
-//static void* buffer = new u8[640*448];
 static u32 *grassTop = (u32 *)0x8040c960;
 static u32 *grassBot = (u32 *)0x8040c964;
 static u32 GrassDefault[2] = {*grassTop, *grassBot};
@@ -457,12 +459,21 @@ void grassColorInit(TMarDirector *director) {
     }
 }
 
-void DoMist(TMarDirector *director) {
-    //if (buffer == nullptr)
-        //return;
-    //draw_mist__FUsUsUsUsPv(0, 0, SMSGetGameRenderWidth__Fv(), SMSGetGameRenderHeight__Fv(), gay);
-    return;
-}
+// Temporary patch bcs i hate manually setting the level every time...
+//
+//void initStageLoading(TMarDirector *director) {
+//    BetterSMS::Loading::setLoading(true);
+//    director->mAreaID = 14;
+//    director->mEpisodeID = 1;
+//    
+//    gpApplication.mNextScene.mAreaID = 14;
+//    gpApplication.mNextScene.mEpisodeID = 1;
+//    gpApplication.mCurrentScene.mAreaID = 14;
+//    gpApplication.mCurrentScene.mEpisodeID = 1;
+//
+//    director->loadResource();
+//}
+//SMS_PATCH_BL(SMS_PORT_REGION(0x80296DE0, 0, 0, 0), initStageLoading);
 
 // Module definition
 
@@ -471,6 +482,12 @@ static void initModule() {
 
     // Register callbacks
     BetterSMS::Stage::addInitCallback(grassColorInit);
+    
+    BetterSMS::Stage::addInitCallback(initFilters);
+    BetterSMS::Stage::addUpdateCallback(updateFilters);
+    BetterSMS::Objects::registerObjectAsMisc("SunsetFilter", TSunsetFilter::instantiate);
+    BetterSMS::Objects::registerObjectAsMisc("SpookyFilter", TSpookyFilter::instantiate);
+    BetterSMS::Objects::registerObjectAsMisc("OutlineFilter", TOutlineFilter::instantiate);
 
     // Register settings
     sSettingsGroup.addSetting(&ElemTeam);

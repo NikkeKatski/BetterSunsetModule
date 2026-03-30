@@ -9,24 +9,11 @@
 #include <GX.h>
 #include <settings.hxx>
 #include <Map/MapCollisionData.hxx>
+#include <JGeometry/JGMVec.hxx>
 
 const u32 SunsetGrass[3]     = {0x7E8736ff, 0x216118ff, 0x0};
 const u32 SunsetGrassDark[3] = {0x5C581Dff, 0x172502ff, 0x006100ff};
 const u32 TwilightGrass[3]   = {0x316C3Eff, 0x105216ff, 0x0};
-
-struct triangle {
-public:
-    float x;
-    float y;
-    float z;
-};
-
-struct trishort {
-public:
-    short x;
-    short y;
-    short z;
-};
 
 class TGrassGroup {
 public:
@@ -34,8 +21,8 @@ public:
     float grassFloor;  // 0x14
     u32 data2[0x14];   // 0x18 We can use 0x6 - 0x9
     u32 triCount;      // 0x68
-    triangle *tris;    // 0x6c
-    trishort *shTris;  // 0x70
+    JGeometry::TVec3<f32> *tris;    // 0x6c
+    JGeometry::TVec3<s16> *shTris;  // 0x70
     short *shHeight;   // 0x74
     u32 unk3;          // 0x78
 };

@@ -60,6 +60,33 @@ public:
     void drawFilter() override;
 
 };
+class TSubtleOutline : public TScreenFilter {
+public:
+    BETTER_SMS_FOR_CALLBACK static JDrama::TNameRef *instantiate() {
+        return new TSubtleOutline("SubtleOutline");
+    }
+
+    TSubtleOutline(const char *name) : TScreenFilter(name) {
+        mUsesScreenTexture = true;
+        mUsesDepthBuffer = true;
+    }
+
+    void drawFilter() override;
+};
+
+class TDepthOfField : public TScreenFilter {
+public:
+    BETTER_SMS_FOR_CALLBACK static JDrama::TNameRef *instantiate() {
+        return new TDepthOfField("DepthOfField");
+    }
+
+    TDepthOfField(const char *name) : TScreenFilter(name) {
+        mUsesScreenTexture = true;
+        mUsesDepthBuffer = true;
+    }
+
+    void drawFilter() override;
+};
 
 class TSpookyFilter : public TScreenFilter {
 public:

@@ -3,16 +3,27 @@
 void initGrassShade(TGrassGroup *grassGroup) {
     if (grassGroup->data2[0x8])
         return;
+    s16 floorS16 = (s16)grassGroup->grassFloor;
+
     grassGroup->data2[0x8] = true;
     grassGroup->data2[0x7] = JSysNew(grassGroup->triCount * sizeof(bool));
+    grassGroup->data2[0x9] = JSysNew(grassGroup->triCount * sizeof(u16));
     for (int i = 0; i < grassGroup->triCount; i++) {
         JGeometry::TVec3<f32>& triVar = grassGroup->tris[i];
-        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 80.0f, triVar.z, 0, &floorBuffer);
+        JGeometry::TVec3<s16>& shTriVar = grassGroup->shTris[i];
+        shTriVar.x = (s16)triVar.x;
+        shTriVar.y = (s16)triVar.y;
+        shTriVar.z = (s16)triVar.z;
+
+        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 100.0f, triVar.z, 0, &floorBuffer);
         if (floorBuffer->mValue == 1) {
             shadeList[i] = true;
+
         } else {
             shadeList[i] = false;
         }
+        snapList[i] = floorBuffer->mMinHeight;
+        shTriVar.y    = shTriVar.y - floorS16 + snapList[i];
     }
 }
 
@@ -39,31 +50,47 @@ void altDrawNear(TGrassGroup *grassGroup) {
         GXSetArray(0xb, altColor1, 4);
         GXBegin(0x90, 0, grassGroup->triCount * 3);
 
-        JGeometry::TVec3<f32> marioPos = gpMarioAddress->mTranslation;
+        JGeometry::TVec3<f32> marioPos;
+        marioPos.set(gpMarioAddress->mTranslation);
+        marioPos.y += 35.f; // I think it looks better.
+
+        s16 shDrawVec       = _mDrawVec;
+        s16 shVertexOffset  = VertexOffset;
 
         s16 floorS16 = (s16)grassGroup->grassFloor;
         for (int i = 0; i < grassGroup->triCount; i = i + 1) {
+            s16 grassSway = gpMapObjGrassManager->shData[i % 9];
+
             JGeometry::TVec3<f32>& triVar = grassGroup->tris[i];
+            JGeometry::TVec3<f32> tempTri;
+            tempTri.set(triVar);
+            tempTri.x += grassSway;
+
+            JGeometry::TVec3<s16> &shTriVar = grassGroup->shTris[i];
+            JGeometry::TVec3<f32> marioDist = triVar - marioPos;
+
             useAlt = shadeList[i];
 
-            JGeometry::TVec3<f32> marioDist = triVar - marioPos;
+            const f32 maxPush = 75.f;
+            const f32 maxDist = 150.f;
+            s16 push = 0;
             f32 dist = marioDist.magnitude();
-            marioDist.normalize();
-
-            if(dist > 200.0f) {
-                dist = 200.0f;
+            if(dist < maxDist) {
+                marioDist.normalize();
+                f32 percentage = 1.0f - dist / maxDist;
+                push = maxPush * percentage;
             }
 
-            f32 percentage = 1.0f - dist / 200.0f;
-            f32 push = 100.0f * percentage;
-
-            GXPosition3s16(triVar.x - _mDrawVec, floorS16, triVar.z - VertexOffset);
+            GXPosition3s16(shTriVar.x - shDrawVec, snapList[i], shTriVar.z - shVertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
-            GXPosition3s16(triVar.x + gpMapObjGrassManager->shData[i % 9] + push * marioDist.x, triVar.y, triVar.z + push * marioDist.z);
+            if (push == 0) {
+                GXPosition3s16(shTriVar.x + grassSway, shTriVar.y, shTriVar.z);
+            } else {
+                GXPosition3s16(shTriVar.x + grassSway + push * marioDist.x, shTriVar.y, shTriVar.z + push * marioDist.z);
+            }
             GXColor1x8(useAlt ? 0 : 2);
-            GXPosition3s16(triVar.x + _mDrawVec, floorS16, triVar.z + VertexOffset);
+            GXPosition3s16(shTriVar.x + shDrawVec, snapList[i], shTriVar.z + shVertexOffset);
             GXColor1x8(useAlt ? 0 : 3);
-        
         }
     }
     return;

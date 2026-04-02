@@ -44,6 +44,7 @@ static const TBGCheckData *floorBuffer = new TBGCheckData;
 
 #define JSysNew   ((int (*)(...))0x802c3ca4)
 #define shadeList ((bool *)grassGroup->data2[0x7])
+#define snapList ((s16 *)grassGroup->data2[0x9])
 
 void initGrassShade(TGrassGroup *grassGroup);
 

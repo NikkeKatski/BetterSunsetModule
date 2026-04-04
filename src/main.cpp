@@ -33,6 +33,9 @@ SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something ab
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);
 SMS_WRITE_32(SMS_PORT_REGION(0x801494E0, 0, 0, 0), 0x63c00000);
 
+SMS_WRITE_32(0x80013c68, 0x60000000); // Something about rollouts or some shit
+SMS_WRITE_32(0x80013c68, 0x60000000);
+
 static const u8 sSaveBnr[] = {
     0x09, 0x00, 0x00, 0x60, 0x00, 0x20, 0x00, 0x00, 0x01, 0x02, 0x00, 0x88, 0x00, 0x00, 0x0c, 0x20,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20,
@@ -405,7 +408,7 @@ static const u8 sSaveIcon[] = {
 
 static BetterSMS::Settings::SettingsGroup sSettingsGroup(1, 0, BetterSMS::Settings::Priority::MODE);
 
-static sElemTeamSetting ElemTeam;
+static sElemTeamSetting ElemTeam; // TODO: Add shader developer section, yes they are that good.
 static sLeadStageSetting LeadStage;
 static sLeadCoderSetting LeadCoder;
 static sLeadComposerSetting LeadComposer;
@@ -421,7 +424,7 @@ static BetterSMS::ModuleInfo sModuleInfo("Sunset Module+", 1, 1, &sSettingsGroup
 
 static u32 *grassTop = (u32 *)0x8040c960;
 static u32 *grassBot = (u32 *)0x8040c964;
-static u32 GrassDefault[2] = {*grassTop, *grassBot};
+const u32 GrassDefault[2] = {*grassTop, *grassBot};
 
 void setGrass(const u32 color[2]) {
     *grassTop = color[0];

@@ -11,9 +11,9 @@
 #include <Map/MapCollisionData.hxx>
 #include <JGeometry/JGMVec.hxx>
 
-const u32 SunsetGrass[3]     = {0x7E8736ff, 0x216118ff, 0x0};
-const u32 SunsetGrassDark[3] = {0x5C581Dff, 0x172502ff, 0x006100ff};
-const u32 TwilightGrass[3]   = {0x316C3Eff, 0x105216ff, 0x0};
+constexpr u32 SunsetGrass[3]     = {0x7E8736ff, 0x216118ff, 0x0};
+constexpr u32 SunsetGrassDark[3] = {0x5C581Dff, 0x172502ff, 0x006100ff};
+constexpr u32 TwilightGrass[3]   = {0x316C3Eff, 0x105216ff, 0x0};
 
 class TGrassGroup {
 public:
@@ -37,8 +37,6 @@ public:
 #define _mDrawVec            *(float *)0x803fa2a8
 #define VertexOffset         *(float *)0x803fa2b0
 #define gpMapObjGrassManager (*((grassManager **)0x8040df7c))
-//#define _mDrawVecS16         *(s16 *)0x8040df74
-//#define s16VertexOffset      *(s16 *)0x8040df78
 
 static const TBGCheckData *floorBuffer = new TBGCheckData;
 

@@ -1,5 +1,6 @@
 #include <grass.hxx>
 
+#if 1
 void initGrassShade(TGrassGroup *grassGroup) {
     if (grassGroup->data2[0x8])
         return;
@@ -27,13 +28,10 @@ void initGrassShade(TGrassGroup *grassGroup) {
     }
 }
 
-#if 1
 Mtx empty = {};
-SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear for now
+SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear
 void altDrawNear(TGrassGroup *grassGroup) {
     initGrassShade(grassGroup);
-    //trishort trishVar;
-    u8 flrVal;
     bool useAlt;
     u32 *altColor1 = (u32 *)0x8040c958;
     *altColor1     = 0x0a3000ff;

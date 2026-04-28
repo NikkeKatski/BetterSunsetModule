@@ -65,9 +65,7 @@ void altDrawNear(TGrassGroup *grassGroup) {
             tempTri.x += grassSway;
 
             JGeometry::TVec3<s16> &shTriVar = grassGroup->shTris[i];
-            // Push should depend on horizontal distance, not height difference.
             JGeometry::TVec3<f32> marioDist = triVar - marioPos;
-            marioDist.y = 0.0f;
 
             useAlt = shadeList[i];
 
@@ -75,8 +73,7 @@ void altDrawNear(TGrassGroup *grassGroup) {
             const f32 maxDist = 150.f;
             s16 push = 0;
             f32 dist = marioDist.magnitude();
-            const bool marioAboveTip = marioPos.y > triVar.y;
-            if (!marioAboveTip && dist > 0.0f && dist < maxDist) {
+            if(dist < maxDist) {
                 marioDist.normalize();
                 f32 percentage = 1.0f - dist / maxDist;
                 push = maxPush * percentage;

@@ -28,6 +28,7 @@ class TScreenFilter : public JDrama::TViewObj {
 public:
 
     TScreenFilter(const char *name) : JDrama::TViewObj(name) {
+        mVisible = true;
         mPerformFlags = 0;
         mInjected = false;
     }
@@ -37,12 +38,15 @@ public:
     virtual void loadAfter() override;
     virtual void perform(u32, JDrama::TGraphics *) override;
 
-    virtual void drawFilter() = 0;
+    virtual void drawFilter(JDrama::TGraphics *graphics) = 0;
+
+    void inject();
 
     bool mVisible;
     bool mInjected;
     bool mUsesScreenTexture;
     bool mUsesDepthBuffer;
+    JDrama::TViewObj* mOrthoProj;
 };
 
 class TOutlineFilter : public TScreenFilter {
@@ -57,7 +61,7 @@ public:
     }
 
     void load(JSUMemoryInputStream &stream) override;
-    void drawFilter() override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
 
 };
 class TSubtleOutline : public TScreenFilter {
@@ -71,7 +75,7 @@ public:
         mUsesDepthBuffer = true;
     }
 
-    void drawFilter() override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
 };
 
 class TDepthOfField : public TScreenFilter {
@@ -85,7 +89,7 @@ public:
         mUsesDepthBuffer = true;
     }
 
-    void drawFilter() override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
 };
 
 class TSpookyFilter : public TScreenFilter {
@@ -99,7 +103,7 @@ public:
         mUsesDepthBuffer = true;
     }
 
-    void drawFilter() override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
 
 };
 
@@ -116,7 +120,44 @@ public:
     }
 
     void load(JSUMemoryInputStream &stream) override;
-    void drawFilter() override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
 
     f32 mIntensity;
+};
+
+class TNokiFilter : public TScreenFilter {
+public:
+    BETTER_SMS_FOR_CALLBACK static JDrama::TNameRef *instantiate() {
+        return new TNokiFilter("NokiFilter");
+    }
+
+    TNokiFilter(const char *name) : TScreenFilter(name) {
+        mUsesScreenTexture = true;
+        mUsesDepthBuffer = true;
+    }
+
+    //void load(JSUMemoryInputStream &stream) override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
+
+};
+
+class TFogFilter : public TScreenFilter {
+public:
+    BETTER_SMS_FOR_CALLBACK static JDrama::TNameRef *instantiate() {
+        return new TFogFilter("FogFilter");
+    }
+
+    TFogFilter(const char *name) : TScreenFilter(name) {
+        mUsesScreenTexture = true;
+        mUsesDepthBuffer = true;
+    }
+
+    void load(JSUMemoryInputStream &stream) override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
+
+    u8 mDensity;
+    u8 mOpacity;
+    u8 mR;
+    u8 mG;
+    u8 mB;
 };

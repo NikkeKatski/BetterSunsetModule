@@ -1,4 +1,4 @@
-#include <Dolphin/CARD.h>
+﻿#include <Dolphin/CARD.h>
 #include <Dolphin/OS.h>
 #include <Dolphin/math.h>
 #include <Dolphin/string.h>
@@ -6,6 +6,7 @@
 
 #include <JSystem/J2D/J2DOrthoGraph.hxx>
 #include <JSystem/J2D/J2DTextBox.hxx>
+#include <JSystem/JDrama/JDRDStageGroup.hxx>
 
 #include <SMS/System/Application.hxx>
 
@@ -466,19 +467,89 @@ void grassColorInit(TMarDirector *director) {
 //
 //void initStageLoading(TMarDirector *director) {
 //    BetterSMS::Loading::setLoading(true);
-//    director->mAreaID = 14;
-//    director->mEpisodeID = 1;
+//
+//    u8 areaId = 16;
+//    u8 episodeId = 0;
+//
+//    director->mAreaID = areaId;
+//    director->mEpisodeID = episodeId;
 //    
-//    gpApplication.mNextScene.mAreaID = 14;
-//    gpApplication.mNextScene.mEpisodeID = 1;
-//    gpApplication.mCurrentScene.mAreaID = 14;
-//    gpApplication.mCurrentScene.mEpisodeID = 1;
+//    gpApplication.mNextScene.mAreaID = areaId;
+//    gpApplication.mNextScene.mEpisodeID = episodeId;
+//    gpApplication.mCurrentScene.mAreaID = areaId;
+//    gpApplication.mCurrentScene.mEpisodeID = episodeId;
 //
 //    director->loadResource();
 //}
 //SMS_PATCH_BL(SMS_PORT_REGION(0x80296DE0, 0, 0, 0), initStageLoading);
+//
+
+u32** gpBeamManager = (u32**)(0x8040d8d0);
+bool inited = false;
+void drawNoki8Beam(TMarDirector* marDirector) {
+
+    // Darker ropes
+    BetterSMS::PowerPC::writeU32((u32 *)0x8040DEBC, 0x7D766AFF);
+    BetterSMS::PowerPC::writeU32((u32 *)0x8040DEC0, 0x635C50FF);
+
+    if(!inited) {
+        //TFogFilter* filter = (TFogFilter*)TFogFilter::instantiate();
+        //filter->mVisible = true;
+        //filter->mDensity = 255;
+        //filter->mOpacity = 200;
+        //filter->mR = 4;
+        //filter->mG = 44;
+        //filter->mB = 88;
+        //filter->inject();
+
+        //TSubtleOutline* sunsetFilter = (TSubtleOutline*)TSubtleOutline::instantiate();
+        //sunsetFilter->mVisible = true;
+        //sunsetFilter->inject();
+        //TScreenFilter* filter2 = (TScreenFilter*)TSubtleOutline::instantiate();
+        //filter2->inject();
+        inited = true;
+    }
+}
+
+void initCallback(TMarDirector* marDirector) {
+    inited = false;
+}
 
 // Module definition
+
+// Orange textbox
+SMS_WRITE_32(0x80150708, 0x3CA0FF8E);
+SMS_WRITE_32(0x8015070C, 0x60A00000);
+SMS_WRITE_32(0x80150728, 0x3CA0FF8E);
+SMS_WRITE_32(0x8015072C, 0x60A500A0);
+SMS_WRITE_32(0x80150738, 0x7C002B78);
+
+// Allow indirect materials in the map mesh
+SMS_WRITE_32(0x80194458, 0x3c601102);
+
+
+// Fix object jitter with dual core
+void PerformList_push_back_mapGroup(TPerformList* that, JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>* mapObj, u32 flags) {
+
+    auto beginIter = mapObj->mViewObjList.begin();
+    auto endIter = mapObj->mViewObjList.end();
+    JGadget::TList<JDrama::TViewObj*>::iterator iter = *reinterpret_cast<JGadget::TList<JDrama::TViewObj*>::iterator*>(&beginIter);
+    JGadget::TList<JDrama::TViewObj*>::iterator end = *reinterpret_cast<JGadget::TList<JDrama::TViewObj*>::iterator*>(&endIter);
+    auto* mapGroup = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Map group objs");
+    while(iter != end) {
+
+        if(strcmp((const char*)((u32)(*iter) - 12), "MapObjBase") != 0 &&
+            strcmp((const char*)((u32)(*iter) - 12), "RiccoSwitch") != 0 &&
+            strcmp((const char*)((u32)(*iter) - 16), "PinnaCoaster") != 0) {
+            mapGroup->mViewObjList.insert(mapGroup->mViewObjList.end(), *iter);
+        }
+        iter++;
+    }
+    that->push_back(mapGroup, flags);
+
+}
+SMS_PATCH_BL(SMS_PORT_REGION(0x8029c2fc, 0, 0, 0), PerformList_push_back_mapGroup);
+
 
 static void initModule() {
     OSReport("Initializing Module...\n");
@@ -491,6 +562,10 @@ static void initModule() {
     BetterSMS::Objects::registerObjectAsMisc("SunsetFilter", TSunsetFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("SpookyFilter", TSpookyFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("OutlineFilter", TOutlineFilter::instantiate);
+    BetterSMS::Objects::registerObjectAsMisc("FogFilter", TFogFilter::instantiate);
+
+    BetterSMS::Stage::addUpdateCallback(drawNoki8Beam);
+    BetterSMS::Stage::addInitCallback(initCallback);
 
     // Register settings
     sSettingsGroup.addSetting(&ElemTeam);

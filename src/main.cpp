@@ -29,13 +29,16 @@
 
 #include "grass.hxx"
 #include "screen_filter.hxx"
+#include "SMS/macros.h"
 
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);
 SMS_WRITE_32(SMS_PORT_REGION(0x801494E0, 0, 0, 0), 0x63c00000);
 
-SMS_WRITE_32(0x80013c68, 0x60000000); // Something about rollouts or some shit
+SMS_WRITE_32(0x80013c68, 0x60000000); // Something about rollout audio or some shit
 SMS_WRITE_32(0x80013c68, 0x60000000);
+
+SMS_WRITE_32(0x803C7550, 0x00000000);  // the ShadowKiller
 
 static const u8 sSaveBnr[] = {
     0x09, 0x00, 0x00, 0x60, 0x00, 0x20, 0x00, 0x00, 0x01, 0x02, 0x00, 0x88, 0x00, 0x00, 0x0c, 0x20,
@@ -402,6 +405,25 @@ static const u8 sSaveIcon[] = {
     0x66, 0x57, 0x32, 0x23, 0x33, 0x35, 0x54, 0x37, 0x57, 0x67, 0xa0, 0x84, 0x44, 0x37, 0x56, 0x57,
     0xcd, 0xcc, 0xd6, 0x73, 0xb9, 0x4a, 0x35, 0x34, 0x48, 0x54, 0xc4, 0x82, 0x57, 0x43, 0x24, 0x33,
     0x6b, 0x87, 0x6b, 0x64, 0x58, 0x53, 0x34, 0x32};
+
+
+//struct balls{
+//    u8 a[0xb7];
+//    float b;
+//};
+//
+//void shadowKiller(u32 r3, u32 r4) { //pray this works
+//    u32 r12;
+//    SMS_FROM_GPR(12, r12);
+//    if (r12 == 0x801d4a34) {
+//        balls *tempBalls = (balls *)r3;
+//        tempBalls->b     = 0.f;
+//        ((void (*)(...))r12)(r3, r4);
+//        return;
+//    }
+//    ((void (*)(...))r12)(r3, r4);
+//}
+//SMS_PATCH_BL(0x802a07a0, shadowKiller);
 
 /*
 / Settings

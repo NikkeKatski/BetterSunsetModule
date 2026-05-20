@@ -27,6 +27,7 @@
 //#include <JGeometry/JGMMatrix.hxx>
 //#include <JGeometry/JGMUtil.hxx>
 
+#include "texture_block.hxx"
 #include "grass.hxx"
 #include "screen_filter.hxx"
 #include "SMS/macros.h"
@@ -572,6 +573,39 @@ void PerformList_push_back_mapGroup(TPerformList* that, JDrama::TViewObjPtrListT
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x8029c2fc, 0, 0, 0), PerformList_push_back_mapGroup);
 
+//
+//// Log files that was attempted to be loaded, but could not
+//int JKRArchive_getResource_findResourceX(JKRArchive *that, char *file, u32 dir_id) {
+//    int exists = findFsResource__10JKRArchiveCFPCcUl(that, file, dir_id);
+//    if(exists == 0) {
+//        OSReport("[WARN] Tried to load missing file %s\n", file);
+//    }
+//
+//    return exists;
+//}
+//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf01c, 0, 0, 0), JKRArchive_getResource_findResourceX);
+//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf030, 0, 0, 0), JKRArchive_getResource_findResourceX);
+//
+//int JKRArchive_getResource2_findNameResource(JKRArchive *that, char *file) {
+//    int exists = findNameResource__10JKRArchiveCFPCc(that, file);
+//    if(exists == 0) {
+//        OSReport("[WARN] Tried to load missing file %s\n", file);
+//    }
+//
+//    return exists;
+//}
+//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf0a4, 0, 0, 0), JKRArchive_getResource2_findNameResource);
+//
+//int JKRArchive_getResource2_findTypeResource(JKRArchive *that, u32 type, char *file) {
+//    int exists = findTypeResource__10JKRArchiveCFUlPCc(that, type, file);
+//    if(exists == 0) {
+//        OSReport("[WARN] Tried to load missing file %s\n", file);
+//    }
+//
+//    return exists;
+//}
+//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf0b4, 0, 0, 0), JKRArchive_getResource2_findTypeResource);
+
 
 static void initModule() {
     OSReport("Initializing Module...\n");
@@ -585,6 +619,7 @@ static void initModule() {
     BetterSMS::Objects::registerObjectAsMisc("SpookyFilter", TSpookyFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("OutlineFilter", TOutlineFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("FogFilter", TFogFilter::instantiate);
+    BetterSMS::Objects::registerObjectAsMapObj("TextureBlock", &textureBlockData, TTextureBlock::instantiate);
 
     BetterSMS::Stage::addUpdateCallback(drawNoki8Beam);
     BetterSMS::Stage::addInitCallback(initCallback);

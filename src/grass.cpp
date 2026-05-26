@@ -16,14 +16,19 @@ void initGrassShade(TGrassGroup *grassGroup) {
         shTriVar.y = (s16)triVar.y;
         shTriVar.z = (s16)triVar.z;
 
-        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 100.0f, triVar.z, 0, &floorBuffer);
+        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 600.0f, triVar.z, 0, &floorBuffer);
         if (floorBuffer->mValue == 1) {
             shadeList[i] = true;
 
         } else {
             shadeList[i] = false;
         }
-        snapList[i] = floorBuffer->mMinHeight;
+        if (floorS16 - floorBuffer->mMinHeight <= 400) {
+            snapList[i] = floorBuffer->mMinHeight;
+        } else {
+            snapList[i] = grassGroup->grassFloor;
+        }
+        //snapList[i] = floorBuffer->mMinHeight;
         shTriVar.y    = shTriVar.y - floorS16 + snapList[i];
     }
 }

@@ -16,7 +16,12 @@ void initGrassShade(TGrassGroup *grassGroup) {
         shTriVar.y = (s16)triVar.y;
         shTriVar.z = (s16)triVar.z;
 
-        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + 600.0f, triVar.z, 0, &floorBuffer);
+        u8 areaID = gpMarDirector->mAreaID;
+        float checkY = 100.f;
+        if (areaID == 44)
+            checkY = 600.f;
+
+        gpMapCollisionData->checkGround(triVar.x, grassGroup->grassFloor + checkY, triVar.z, 0, &floorBuffer);
         if (floorBuffer->mValue == 1) {
             shadeList[i] = true;
 

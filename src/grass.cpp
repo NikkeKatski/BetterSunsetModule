@@ -43,8 +43,8 @@ SMS_WRITE_32(0x801e9234, 0x60000000);  // make all grass drawNear
 void altDrawNear(TGrassGroup *grassGroup) {
     initGrassShade(grassGroup);
     bool useAlt;
-    u32 *altColor1 = (u32 *)0x8040c958;
-    *altColor1     = 0x0a3000ff;
+    u32 *grassColors = (u32 *)0x8040c958;
+    //*altColor1     = 0x0a3000ff;
 
     if (grassGroup->unk3 == 0) {
         gekko_ps_copy12__9JGeometryFPvPv(empty, 0x804045dc, 0);
@@ -55,7 +55,7 @@ void altDrawNear(TGrassGroup *grassGroup) {
         GXSetVtxDesc(9, 1);
         GXSetVtxDesc(0xb, 2);
 
-        GXSetArray(0xb, altColor1, 4);
+        GXSetArray(0xb, grassColors, 4);
         GXBegin(0x90, 0, grassGroup->triCount * 3);
 
         JGeometry::TVec3<f32> marioPos;

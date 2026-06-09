@@ -446,18 +446,22 @@ static sPlaceholderSetting Placeholder;
 
 static BetterSMS::ModuleInfo sModuleInfo("Sunset Module+", 1, 1, &sSettingsGroup);
 
+static u32 *grassShadeTop = (u32 *)0x8040c958;
+static u32 *grassShadeBot = (u32 *)0x8040c95c; //Unused
 static u32 *grassTop = (u32 *)0x8040c960;
 static u32 *grassBot = (u32 *)0x8040c964;
-const u32 GrassDefault[2] = {*grassTop, *grassBot};
+const u32 GrassDefault[4] = {0x0a3000ff, 0x0, *grassTop, *grassBot};
 
-void setGrass(const u32 color[2]) {
-    *grassTop = color[0];
-    *grassBot = color[1];
+void setGrass(const u32 color[4]) {
+    *grassShadeTop = color[0];
+    *grassShadeBot = color[1]; //Unused
+    *grassTop = color[2];
+    *grassBot = color[3];
 }
 
 void grassColorInit(TMarDirector *director) {
-    u16 areaID = director->mAreaID;
     u16 sceneID;
+    u16 areaID = director->mAreaID;
     sceneID = areaID << 8;
     sceneID |= director->mEpisodeID;
 

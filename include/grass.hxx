@@ -10,10 +10,10 @@
 #include <settings.hxx>
 #include <Map/MapCollisionData.hxx>
 #include <JGeometry/JGMVec.hxx>
-
-constexpr u32 SunsetGrass[3]     = {0x7E8736ff, 0x216118ff, 0x0};
-constexpr u32 SunsetGrassDark[3] = {0x5C581Dff, 0x172502ff, 0x006100ff};
-constexpr u32 TwilightGrass[3]   = {0x316C3Eff, 0x105216ff, 0x0};
+// ShadeTop, ShadeBot, Top, Bot
+constexpr u32 SunsetGrass[4]     = {0x0a3000ff, 0x0, 0x7E8736ff, 0x216118ff};
+constexpr u32 SunsetGrassDark[4] = {0x172502ff, 0x0, 0x5C581Dff, 0x172502ff};
+constexpr u32 TwilightGrass[4]   = {0x0a3000ff, 0x0, 0x316C3Eff, 0x105216ff};
 
 class TGrassGroup {
 public:

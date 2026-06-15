@@ -45,7 +45,7 @@ static hit_data BrickBlock_hit_data{.mAttackRadius  = 0.0f,
                                    .mReceiveHeight = 0.0f};
 
 static obj_hit_info BrickBlock_map_collision_info{
-    ._00 = 1, .mType = 0, ._08 = 0, .mHitData = &BrickBlock_hit_data};
+    ._00 = 1, .mType = 0, .mVisualOfsY = 0, .mHitData = &BrickBlock_hit_data};
 
 static const TMapObjCollisionData BrickBlock_map_collision_data[] = {
 	{ "TextureBlock", 2 },
@@ -93,6 +93,8 @@ inline static void SMS_LoadParticle(const char* path, u32 id)
 
 void TTextureBlock::initMapObj()
 {
+	mStateFlags.asU32 |= 0x214;
+	mStateFlags.asU32 &= ~0xB;
 	TMapObjBase::initMapObj();
 	mObjectID = 0x400002C2; // Hacky, but should work
 	SMS_LoadParticle("/scene/mapObj/BrickBlockA.jpa", 0x60);
@@ -100,8 +102,12 @@ void TTextureBlock::initMapObj()
 	SMS_LoadParticle("/scene/mapObj/TextureBlockB.jpa", 0x1AC);
 	SMS_LoadParticle("/scene/mapObj/BrickBlockC.jpa", 0x62);
 
+	// Shadow
+	if(mFloorBelow->mType & 0x4000) {
+		mCollisionManager->mCurrentMapCollision->setAllBGType(0x4000);
+	}
 }
-
+	
 void TTextureBlock::kill()
 {
 	makeObjDead();
@@ -130,9 +136,12 @@ void TTextureBlock::makeMActors()
 	snprintf(mLetterName, 32, "%s.bmd", mRegisterName);
 	BrickBlock_anim_data[0].unk0 = mLetterName;
 	THideObjBase::makeMActors();
+	mModelLoadFlags |= 0x800;
 	
     char texPath[64];
     snprintf(texPath, 64, "/scene/mapobj/textureblock.bti");
+
+	OSReport("HMMM %X\n", getShadowType());
     
     auto *timgdata = JKRFileLoader::getGlbResource(texPath);
     if(timgdata != nullptr) {
@@ -143,3 +152,18 @@ void TTextureBlock::makeMActors()
 		mActorData->mModel->lock();
 	}
 }
+u32 TTextureBlock::getShadowType() { return 0; }
+
+void TTextureBlock::requestShadow() {
+	TCircleShadowRequest request;
+	request.mTranslation = mTranslation;
+	request.mTranslation.y = mGroundY;
+	request.mOffsetY = mShadowRadius * 2;
+	request.mOffsetY2 = mShadowRadius * 2;
+	request.mShadowType = 1;
+	request._18 = 0.0f;
+	request.mRotationY = 90.0f;
+	gpBindShadowManager->request(request, mObjectID);
+}
+
+SMS_WRITE_32(0x8022e410, 0x2C000001);

@@ -74,7 +74,8 @@ public:
         mUsesScreenTexture = true;
         mUsesDepthBuffer = true;
     }
-
+    
+    void load(JSUMemoryInputStream &stream) override;
     void drawFilter(JDrama::TGraphics *graphics) override;
 };
 
@@ -102,7 +103,8 @@ public:
         mUsesScreenTexture = true;
         mUsesDepthBuffer = true;
     }
-
+    
+    void load(JSUMemoryInputStream &stream) override;
     void drawFilter(JDrama::TGraphics *graphics) override;
 
 };

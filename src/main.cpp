@@ -26,11 +26,19 @@
 #include <Map/MapCollisionData.hxx>
 //#include <JGeometry/JGMMatrix.hxx>
 //#include <JGeometry/JGMUtil.hxx>
+#include <SMS/GC2D/SelectGrad.hxx>
+#include <JSystem/J3D/J3DModelLoaderDataBase.hxx>
+#include <JSystem/JKernel/JKRDvdRipper.hxx>
+#include <SMS/MarioUtil/gd-reinit-gx.hxx>
+#include <SMS/MarioUtil/DrawUtil.hxx>
 
 #include "texture_block.hxx"
 #include "grass.hxx"
 #include "screen_filter.hxx"
 #include "SMS/macros.h"
+#include <SMS/GC2D/SelectDir.hxx>
+
+//#include <Dolphin/THP.h>
 
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C4, 0, 0, 0), 0x63C0AD88);
@@ -430,7 +438,8 @@ static const u8 sSaveIcon[] = {
 / Settings
 */
 
-static BetterSMS::Settings::SettingsGroup sSettingsGroup(1, 0, BetterSMS::Settings::Priority::MODE);
+static BetterSMS::Settings::SettingsGroup sSunsetSettingsGroup(1, 0, BetterSMS::Settings::Priority::GAME);
+static BetterSMS::Settings::SettingsGroup sCreditsGroup(1, 0, BetterSMS::Settings::Priority::MODE);
 
 static sElemTeamSetting ElemTeam; // TODO: Add shader developer section, yes they are that good.
 static sLeadStageSetting LeadStage;
@@ -440,11 +449,23 @@ static sPizzaGuySetting PizzaGuy;
 static sModuleDevSetting ModuleDev;
 static sPlaceholderSetting Placeholder;
 
+bool sDisableBlurFilter;
+static BetterSMS::Settings::BoolSetting sBlurFilter("Disable Blur Filter", &sDisableBlurFilter);
+
+bool sDisableSpookyFilter;
+static BetterSMS::Settings::BoolSetting sSpookyFilter("Disable Spooky Filter", &sDisableSpookyFilter);
+
+bool sDisableOutlineFilter;
+static BetterSMS::Settings::BoolSetting sOutlineFilter("Disable Outline Filter", &sDisableOutlineFilter);
+
+bool sDisableFogFilter;
+static BetterSMS::Settings::BoolSetting sFogFilter("Disable Fog Filter", &sDisableFogFilter);
 /*
 / Module Info
 */
 
-static BetterSMS::ModuleInfo sModuleInfo("Sunset Module+", 1, 1, &sSettingsGroup);
+static BetterSMS::ModuleInfo sModuleInfo("Sunset Settings", 1, 2, &sSunsetSettingsGroup);
+static BetterSMS::ModuleInfo sCreditsModuleInfo("Sunset Credits", 1, 1, &sCreditsGroup);
 
 static u32 *grassShadeTop = (u32 *)0x8040c958;
 static u32 *grassShadeBot = (u32 *)0x8040c95c; //Unused
@@ -529,9 +550,11 @@ void drawNoki8Beam(TMarDirector* marDirector) {
         //filter->mB = 88;
         //filter->inject();
 
-        //TSubtleOutline* sunsetFilter = (TSubtleOutline*)TSubtleOutline::instantiate();
-        //sunsetFilter->mVisible = true;
-        //sunsetFilter->inject();
+        if(marDirector->mAreaID == 57) {
+            TSubtleOutline* sunsetFilter = (TSubtleOutline*)TSubtleOutline::instantiate();
+            sunsetFilter->mVisible = true;
+            sunsetFilter->inject();
+        }
         //TScreenFilter* filter2 = (TScreenFilter*)TSubtleOutline::instantiate();
         //filter2->inject();
         inited = true;
@@ -554,62 +577,169 @@ SMS_WRITE_32(0x80150738, 0x7C002B78);
 // Allow indirect materials in the map mesh
 SMS_WRITE_32(0x80194458, 0x3c601102);
 
+//static const ResTIMG* sBgTimg[8];
+//static GXTexObj sBgTexObj[8];
+static const char* worldThps[8] = {
+    "bianco.thp",
+    "ricco.thp",
+    "gelato.thp",
+    "pinna.thp",
+    "sirena.thp",
+    "sirena.thp",
+    "pianta.thp",
+    "noki.thp"
+};
+static bool sBgTexReady = false;
 
-// Fix object jitter with dual core
-void PerformList_push_back_mapGroup(TPerformList* that, JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>* mapObj, u32 flags) {
+static bool sTriedLoad = false;
+static bool sShouldLoad = false;
 
-    auto beginIter = mapObj->mViewObjList.begin();
-    auto endIter = mapObj->mViewObjList.end();
-    JGadget::TList<JDrama::TViewObj*>::iterator iter = *reinterpret_cast<JGadget::TList<JDrama::TViewObj*>::iterator*>(&beginIter);
-    JGadget::TList<JDrama::TViewObj*>::iterator end = *reinterpret_cast<JGadget::TList<JDrama::TViewObj*>::iterator*>(&endIter);
-    auto* mapGroup = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Map group objs");
-    while(iter != end) {
+static void setupTexture2D(u8 episode) {
+    Mtx44 proj;
+    C_MTXOrtho(proj, 0.0f, SMSGetGameRenderHeight__Fv(), 0.0f, SMSGetGameRenderWidth__Fv(), -1.0f, 1.0f);
+    GXSetProjection(proj, GX_ORTHOGRAPHIC);
+    Mtx view;
+    MTXIdentity(view);
+    GXLoadPosMtxImm(view, GX_PNMTX0);
+    GXSetCurrentMtx(GX_PNMTX0);
 
-        if(strcmp((const char*)((u32)(*iter) - 12), "MapObjBase") != 0 &&
-            strcmp((const char*)((u32)(*iter) - 12), "RiccoSwitch") != 0 &&
-            strcmp((const char*)((u32)(*iter) - 16), "PinnaCoaster") != 0) {
-            mapGroup->mViewObjList.insert(mapGroup->mViewObjList.end(), *iter);
-        }
-        iter++;
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+    GXSetNumChans(0);
+    GXSetNumTexGens(1);
+	GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 0x3c, GX_FALSE,
+	                  0x7d);
+
+    //GXLoadTexObj(&sBgTexObj[episode], GX_TEXMAP0);
+
+    GXSetNumTevStages(1);
+    GXSetTevOp(GX_TEVSTAGE0, GX_REPLACE);
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+
+    GXSetCullMode(GX_CULL_NONE);
+    GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+    GXSetColorUpdate(GX_TRUE);
+    GXSetAlphaUpdate(GX_TRUE);
+}
+
+void initSelectBg(u8 world) {
+    if (sTriedLoad)
+        return;
+
+    sTriedLoad = true;
+
+    //for(int i = 0; i < 7; ++i) {
+    //    char buffer[255];
+    //    snprintf(buffer, 255, "/select/select_bg/bianco-%d.bti", i);
+    //    OSReport("Loading %s\n", buffer);
+    //    void* res = JKRFileLoader::getGlbResource(buffer);
+    //    if (!res)
+    //        return;
+
+    //    sBgTimg[i] = reinterpret_cast<const ResTIMG*>(res);
+
+    //    GXInitTexObj(
+    //        &sBgTexObj[i],
+    //        (void*)((u8*)sBgTimg[i] + sBgTimg[i]->mTextureOffset),
+    //        sBgTimg[i]->mWidth,
+    //        sBgTimg[i]->mHeight,
+    //        (GXTexFmt)sBgTimg[i]->mFormat,
+    //        GX_CLAMP,
+    //        GX_CLAMP,
+    //        GX_FALSE
+    //    );
+
+    //    GXInitTexObjLOD(
+    //        &sBgTexObj[i],
+    //        GX_LINEAR,
+    //        GX_LINEAR,
+    //        0.0f,
+    //        0.0f,
+    //        0.0f,
+    //        GX_FALSE,
+    //        GX_FALSE,
+    //        GX_ANISO_1
+    //    );
+    //}
+    
+    char buffer[255];
+    snprintf(buffer, 255, "/data/%s", worldThps[world-2]);
+    THPPlayerInit();
+    bool didLoad = THPPlayerOpen(buffer, 0);
+    if(!didLoad) return;
+    
+	THPPlayerSetBuffer(new (0x20) u8[THPPlayerCalcNeedMemory()]);
+    
+	if (!THPPlayerPrepare(0, 1, 0))
+		return;
+    THPPlayerPlay();
+    sBgTexReady = true;
+}
+//
+//static void drawFullscreenTexture(u8 episodeId) {
+//    if (!sBgTexReady)
+//        return;
+//
+//    setupTexture2D(episodeId);
+//
+//    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+//    GXPosition3f32(0.0f,     0.0f,      0.0f);
+//    GXTexCoord2f32(0.0f,     0.0f);
+//
+//    GXPosition3f32(SMSGetGameRenderWidth__Fv(), 0.0f,      0.0f);
+//    GXTexCoord2f32(1.0f,     0.0f);
+//
+//    GXPosition3f32(SMSGetGameRenderWidth__Fv(), SMSGetGameRenderHeight__Fv(),  0.0f);
+//    GXTexCoord2f32(1.0f,     1.0f);
+//
+//    GXPosition3f32(0.0f,     SMSGetGameRenderHeight__Fv(),  0.0f);
+//    GXTexCoord2f32(0.0f,     1.0f);
+//
+//    GXEnd();
+//}
+
+typedef struct THPVideoInfo {
+	u32 xSize;
+	u32 ySize;
+	u32 videoType;
+} THPVideoInfo;
+TSelectDir* gpSelectDir;
+void perform_TSelectGrad_Override(TSelectGrad* that, u32 flags, JDrama::TGraphics* graphics) {
+    if(!sShouldLoad) {
+        perform__11TSelectGradFUlPQ26JDrama9TGraphics(that, flags, graphics);
+        return;
     }
-    that->push_back(mapGroup, flags);
+    sShouldLoad = false;
+    OSReport("Loading wtd\n");
+    initSelectBg(gpSelectDir->mAreaID);
+
+    if(flags & 0x8 && sBgTexReady) {
+        SMS_DrawInit();
+        setupTexture2D(0);
+        GXLoadPosMtxImm(graphics->mViewMtx, GX_PNMTX0);
+        GXSetCurrentMtx(GX_PNMTX0);
+	    THPVideoInfo videoInfo;
+	    THPPlayerGetVideoInfo(&videoInfo);
+        s32 frame = THPPlayerDrawCurrentFrame(0, 0, 0, 640, 448);
+    }
 
 }
-SMS_PATCH_BL(SMS_PORT_REGION(0x8029c2fc, 0, 0, 0), PerformList_push_back_mapGroup);
 
-//
-//// Log files that was attempted to be loaded, but could not
-//int JKRArchive_getResource_findResourceX(JKRArchive *that, char *file, u32 dir_id) {
-//    int exists = findFsResource__10JKRArchiveCFPCcUl(that, file, dir_id);
-//    if(exists == 0) {
-//        OSReport("[WARN] Tried to load missing file %s\n", file);
-//    }
-//
-//    return exists;
-//}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf01c, 0, 0, 0), JKRArchive_getResource_findResourceX);
-//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf030, 0, 0, 0), JKRArchive_getResource_findResourceX);
-//
-//int JKRArchive_getResource2_findNameResource(JKRArchive *that, char *file) {
-//    int exists = findNameResource__10JKRArchiveCFPCc(that, file);
-//    if(exists == 0) {
-//        OSReport("[WARN] Tried to load missing file %s\n", file);
-//    }
-//
-//    return exists;
-//}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf0a4, 0, 0, 0), JKRArchive_getResource2_findNameResource);
-//
-//int JKRArchive_getResource2_findTypeResource(JKRArchive *that, u32 type, char *file) {
-//    int exists = findTypeResource__10JKRArchiveCFUlPCc(that, type, file);
-//    if(exists == 0) {
-//        OSReport("[WARN] Tried to load missing file %s\n", file);
-//    }
-//
-//    return exists;
-//}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x802bf0b4, 0, 0, 0), JKRArchive_getResource2_findTypeResource);
+SMS_WRITE_32(0x803c0ee8, (u32)&perform_TSelectGrad_Override);
 
+void rsetup_setupThreadFunc_TSelectDir_Override(TSelectDir* selectDir, void* param_1) {
+    sBgTexReady = false;
+    sTriedLoad = false;
+    sShouldLoad  = true;
+    gpSelectDir = selectDir;
+    rsetup__10TSelectDirFv(selectDir, param_1);
+}
+SMS_PATCH_BL(0x801773ec, rsetup_setupThreadFunc_TSelectDir_Override);
 
 static void initModule() {
     OSReport("Initializing Module...\n");
@@ -622,6 +752,7 @@ static void initModule() {
     BetterSMS::Objects::registerObjectAsMisc("SunsetFilter", TSunsetFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("SpookyFilter", TSpookyFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("OutlineFilter", TOutlineFilter::instantiate);
+    BetterSMS::Objects::registerObjectAsMisc("SubtleOutlineFilter", TSubtleOutline::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("FogFilter", TFogFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMapObj("TextureBlock", &textureBlockData, TTextureBlock::instantiate);
 
@@ -629,18 +760,22 @@ static void initModule() {
     BetterSMS::Stage::addInitCallback(initCallback);
 
     // Register settings
-    sSettingsGroup.addSetting(&ElemTeam);
-    sSettingsGroup.addSetting(&LeadStage);
-    sSettingsGroup.addSetting(&LeadCoder);
-    sSettingsGroup.addSetting(&LeadComposer);
-    sSettingsGroup.addSetting(&PizzaGuy);
-    sSettingsGroup.addSetting(&ModuleDev);
-    sSettingsGroup.addSetting(&Placeholder);
+    sSunsetSettingsGroup.addSetting(&sBlurFilter);
+    sSunsetSettingsGroup.addSetting(&sSpookyFilter);
+    sSunsetSettingsGroup.addSetting(&sOutlineFilter);
+    sSunsetSettingsGroup.addSetting(&sFogFilter);
 
-
+    sCreditsGroup.addSetting(&ElemTeam);
+    sCreditsGroup.addSetting(&LeadStage);
+    sCreditsGroup.addSetting(&LeadCoder);
+    sCreditsGroup.addSetting(&LeadComposer);
+    sCreditsGroup.addSetting(&PizzaGuy);
+    sCreditsGroup.addSetting(&ModuleDev);
+    sCreditsGroup.addSetting(&Placeholder);
+    
     {
-        auto &saveInfo        = sSettingsGroup.getSaveInfo();
-        saveInfo.mSaveName    = BetterSMS::Settings::getGroupName(sSettingsGroup);
+        auto &saveInfo        = sSunsetSettingsGroup.getSaveInfo();
+        saveInfo.mSaveName    = BetterSMS::Settings::getGroupName(sSunsetSettingsGroup);
         saveInfo.mBlocks      = 1;
         saveInfo.mGameCode    = 'SUNS';
         saveInfo.mCompany     = 0x3031;  // '01'
@@ -652,7 +787,24 @@ static void initModule() {
         saveInfo.mIconTable   = reinterpret_cast<const ResTIMG *>(sSaveIcon);
         saveInfo.mSaveGlobal  = true;
     }
+    
+    {
+        auto &saveInfo        = sCreditsGroup.getSaveInfo();
+        saveInfo.mSaveName    = BetterSMS::Settings::getGroupName(sCreditsGroup);
+        saveInfo.mBlocks      = 1;
+        saveInfo.mGameCode    = 'SUNS';
+        saveInfo.mCompany     = 0x3032;  // '02'
+        saveInfo.mBannerFmt   = CARD_BANNER_CI;
+        saveInfo.mBannerImage = reinterpret_cast<const ResTIMG *>(sSaveBnr);
+        saveInfo.mIconFmt     = CARD_ICON_CI;
+        saveInfo.mIconSpeed   = CARD_SPEED_SLOW;
+        saveInfo.mIconCount   = 2;
+        saveInfo.mIconTable   = reinterpret_cast<const ResTIMG *>(sSaveIcon);
+        saveInfo.mSaveGlobal  = true;
+    }
     BetterSMS::registerModule(sModuleInfo);
+    BetterSMS::registerModule(sCreditsModuleInfo);
+    
 }
 
 // Definition block

@@ -6,6 +6,12 @@
 #include <SMS/Camera/PolarSubCamera.hxx>
 #include <SMS/Enemy/Conductor.hxx>
 
+
+extern bool sDisableBlurFilter;
+extern bool sDisableSpookyFilter;
+extern bool sDisableOutlineFilter;
+extern bool sDisableFogFilter;
+
 class TScreenTexture : public JDrama::TNameRef {
 public:
     u16 unk;
@@ -158,6 +164,8 @@ void TSunsetFilter::load(JSUMemoryInputStream &stream) {
     TScreenFilter::load(stream);
 
     stream.readData(&mIntensity, sizeof(f32));
+
+    if(sDisableBlurFilter) mVisible = false;
 }
 
 void TSunsetFilter::drawFilter(JDrama::TGraphics *graphics) {
@@ -321,7 +329,13 @@ void TSunsetFilter::drawFilter(JDrama::TGraphics *graphics) {
 	GXEnd();
 }
 
-void TOutlineFilter::load(JSUMemoryInputStream &stream) { TScreenFilter::load(stream); }
+void TOutlineFilter::load(JSUMemoryInputStream &stream) {
+    TScreenFilter::load(stream);
+    
+    if(sDisableOutlineFilter) {
+        mVisible = false;
+    }
+}
 
 void TOutlineFilter::drawFilter(JDrama::TGraphics *graphics) {
 
@@ -707,16 +721,23 @@ void TOutlineFilter::drawFilter(JDrama::TGraphics *graphics) {
 
 u8 outlineDepth = 32;
 
+void TSubtleOutline::load(JSUMemoryInputStream &stream) {
+    TScreenFilter::load(stream);
+    if(sDisableOutlineFilter) {
+        mVisible = false;
+    }
+}
+
 void TSubtleOutline::drawFilter(JDrama::TGraphics *graphics) {
     
 
-    //if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::R) {
-    //    outlineDepth++;
-    //}
+    if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::R) {
+        outlineDepth++;
+    }
 
-    //if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::L) {
-    //    outlineDepth--;
-    //}
+    if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::L) {
+        outlineDepth--;
+    }
 
     Mtx e_m;
     Mtx44 m;
@@ -1097,6 +1118,14 @@ is 1 (meaning they are not written to) GXSetTevOrder(GX_TEVSTAGE8, GX_TEXCOORD1,
 
 
 */
+
+void TSpookyFilter::load(JSUMemoryInputStream &stream) {
+    TScreenFilter::load(stream);
+
+    if(sDisableSpookyFilter) {
+        mVisible = false;
+    }
+}
 
 void TSpookyFilter::drawFilter(JDrama::TGraphics *graphics) {
     u16 x  = 0;
@@ -1539,6 +1568,10 @@ void TFogFilter::load(JSUMemoryInputStream &stream) {
     stream.readData(&mR, sizeof(u8));
     stream.readData(&mG, sizeof(u8));
     stream.readData(&mB, sizeof(u8));
+
+    if(sDisableFogFilter) {
+        mVisible = false;
+    }
 }
 
 void TFogFilter::drawFilter(JDrama::TGraphics *graphics) {

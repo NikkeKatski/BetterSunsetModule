@@ -3,6 +3,7 @@
 #include <SMS/MapObj/MapObjBase.hxx>
 
 #include <BetterSMS/module.hxx>
+#include <MarioUtil/ShadowUtil.hxx>
 
 class THideObjBase : public TMapObjBase {
 public:
@@ -45,9 +46,13 @@ public:
 	virtual void kill();
 	virtual void loadBeforeInit(JSUMemoryInputStream&);
 	virtual void makeMActors();
+	virtual u32 getShadowType();
+	virtual void requestShadow();
+	//virtual void perform(u32, JDrama::TGraphics*);
 
 public:
 	char mLetterName[32];
+	//TMBindShadowBody* mBindShadowBody;
 };
 
 extern ObjData textureBlockData;

@@ -577,6 +577,10 @@ SMS_WRITE_32(0x80150738, 0x7C002B78);
 // Allow indirect materials in the map mesh
 SMS_WRITE_32(0x80194458, 0x3c601102);
 
+// Change pollution name for noki
+SMS_WRITE_32(0x803c1dec, 0x8038a0d4);
+SMS_WRITE_32(0x803c1df0, 0x8038a0e0);
+
 //static const ResTIMG* sBgTimg[8];
 //static GXTexObj sBgTexObj[8];
 static const char* worldThps[8] = {

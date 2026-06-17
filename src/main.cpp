@@ -505,6 +505,9 @@ void grassColorInit(TMarDirector *director) {
     case 0x2C00:
         setGrass(SunsetGrassDark);
         break;
+    case 0x0C07:
+        setGrass(TwilightGrass);
+        break;
     default:
         setGrass(SunsetGrass);
         break;

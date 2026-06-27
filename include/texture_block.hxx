@@ -37,7 +37,7 @@ public:
 class TTextureBlock : public TBrickBlock {
 public:
     BETTER_SMS_FOR_CALLBACK static JDrama::TNameRef *instantiate() {
-        return new TTextureBlock("FogFilter");
+        return new TTextureBlock("TextureBlock");
     }
 
 	TTextureBlock(const char* name = "TextureBlock") : TBrickBlock(name) {

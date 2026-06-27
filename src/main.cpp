@@ -35,6 +35,7 @@
 #include "texture_block.hxx"
 #include "grass.hxx"
 #include "screen_filter.hxx"
+#include "bellgame.hxx"
 #include "SMS/macros.h"
 #include <SMS/GC2D/SelectDir.hxx>
 
@@ -762,6 +763,7 @@ static void initModule() {
     BetterSMS::Objects::registerObjectAsMisc("SubtleOutlineFilter", TSubtleOutline::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("FogFilter", TFogFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMapObj("TextureBlock", &textureBlockData, TTextureBlock::instantiate);
+    BetterSMS::Objects::registerObjectAsMapObj("BellGame", &bellgameData, TBellGame::instantiate);
 
     BetterSMS::Stage::addUpdateCallback(drawNoki8Beam);
     BetterSMS::Stage::addInitCallback(initCallback);

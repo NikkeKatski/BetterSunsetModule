@@ -534,7 +534,7 @@ void grassColorInit(TMarDirector *director) {
 //    director->loadResource();
 //}
 //SMS_PATCH_BL(SMS_PORT_REGION(0x80296DE0, 0, 0, 0), initStageLoading);
-//
+
 
 u32** gpBeamManager = (u32**)(0x8040d8d0);
 bool inited = false;
@@ -559,6 +559,12 @@ void drawNoki8Beam(TMarDirector* marDirector) {
             sunsetFilter->mVisible = true;
             sunsetFilter->inject();
         }
+
+        //if(marDirector->mAreaID == 16) {
+        //    TNokiFilter* nokiFilter = (TNokiFilter*)TNokiFilter::instantiate();
+        //    nokiFilter->mVisible = true;
+        //    nokiFilter->inject();
+        //}
         //TScreenFilter* filter2 = (TScreenFilter*)TSubtleOutline::instantiate();
         //filter2->inject();
         inited = true;
@@ -640,40 +646,6 @@ void initSelectBg(u8 world) {
         return;
 
     sTriedLoad = true;
-
-    //for(int i = 0; i < 7; ++i) {
-    //    char buffer[255];
-    //    snprintf(buffer, 255, "/select/select_bg/bianco-%d.bti", i);
-    //    OSReport("Loading %s\n", buffer);
-    //    void* res = JKRFileLoader::getGlbResource(buffer);
-    //    if (!res)
-    //        return;
-
-    //    sBgTimg[i] = reinterpret_cast<const ResTIMG*>(res);
-
-    //    GXInitTexObj(
-    //        &sBgTexObj[i],
-    //        (void*)((u8*)sBgTimg[i] + sBgTimg[i]->mTextureOffset),
-    //        sBgTimg[i]->mWidth,
-    //        sBgTimg[i]->mHeight,
-    //        (GXTexFmt)sBgTimg[i]->mFormat,
-    //        GX_CLAMP,
-    //        GX_CLAMP,
-    //        GX_FALSE
-    //    );
-
-    //    GXInitTexObjLOD(
-    //        &sBgTexObj[i],
-    //        GX_LINEAR,
-    //        GX_LINEAR,
-    //        0.0f,
-    //        0.0f,
-    //        0.0f,
-    //        GX_FALSE,
-    //        GX_FALSE,
-    //        GX_ANISO_1
-    //    );
-    //}
     
     char buffer[255];
     snprintf(buffer, 255, "/data/%s", worldThps[world-2]);
@@ -686,30 +658,9 @@ void initSelectBg(u8 world) {
 	if (!THPPlayerPrepare(0, 1, 0))
 		return;
     THPPlayerPlay();
+    OSReport("Tried loading %s %d\n", buffer, didLoad);
     sBgTexReady = true;
 }
-//
-//static void drawFullscreenTexture(u8 episodeId) {
-//    if (!sBgTexReady)
-//        return;
-//
-//    setupTexture2D(episodeId);
-//
-//    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-//    GXPosition3f32(0.0f,     0.0f,      0.0f);
-//    GXTexCoord2f32(0.0f,     0.0f);
-//
-//    GXPosition3f32(SMSGetGameRenderWidth__Fv(), 0.0f,      0.0f);
-//    GXTexCoord2f32(1.0f,     0.0f);
-//
-//    GXPosition3f32(SMSGetGameRenderWidth__Fv(), SMSGetGameRenderHeight__Fv(),  0.0f);
-//    GXTexCoord2f32(1.0f,     1.0f);
-//
-//    GXPosition3f32(0.0f,     SMSGetGameRenderHeight__Fv(),  0.0f);
-//    GXTexCoord2f32(0.0f,     1.0f);
-//
-//    GXEnd();
-//}
 
 typedef struct THPVideoInfo {
 	u32 xSize;
@@ -718,13 +669,22 @@ typedef struct THPVideoInfo {
 } THPVideoInfo;
 TSelectDir* gpSelectDir;
 void perform_TSelectGrad_Override(TSelectGrad* that, u32 flags, JDrama::TGraphics* graphics) {
-    if(!sShouldLoad) {
+    if(!sShouldLoad && !sBgTexReady) {
         perform__11TSelectGradFUlPQ26JDrama9TGraphics(that, flags, graphics);
         return;
     }
-    sShouldLoad = false;
-    OSReport("Loading wtd\n");
     initSelectBg(gpSelectDir->mAreaID);
+    sShouldLoad = false;
+
+    if(gpSelectDir->mIsResetting || gpSelectDir->mMenu->mCloseTime >= 10) {
+        if(sBgTexReady) {
+            OSReport("Resetting %d\n", gpSelectDir->mMenu->mCloseTime);
+		    THPPlayerStop();
+		    THPPlayerClose();
+            THPPlayerQuit();
+            sBgTexReady = false;
+        }
+    }
 
     if(flags & 0x8 && sBgTexReady) {
         SMS_DrawInit();
@@ -755,7 +715,6 @@ static void initModule() {
     // Register callbacks
     BetterSMS::Stage::addInitCallback(grassColorInit);
     
-    BetterSMS::Stage::addInitCallback(initFilters);
     BetterSMS::Stage::addUpdateCallback(updateFilters);
     BetterSMS::Objects::registerObjectAsMisc("SunsetFilter", TSunsetFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("SpookyFilter", TSpookyFilter::instantiate);

@@ -729,7 +729,7 @@ void TSubtleOutline::load(JSUMemoryInputStream &stream) {
 }
 
 void TSubtleOutline::drawFilter(JDrama::TGraphics *graphics) {
-    
+    /*
 
     if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::R) {
         outlineDepth++;
@@ -737,7 +737,7 @@ void TSubtleOutline::drawFilter(JDrama::TGraphics *graphics) {
 
     if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::L) {
         outlineDepth--;
-    }
+    }*/
 
     Mtx e_m;
     Mtx44 m;
@@ -1424,8 +1424,20 @@ public:
 static J3DSys *j3dSys = (J3DSys *)0x804045dc;
 
 void TNokiFilter::drawFilter(JDrama::TGraphics *graphics) {
+    if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::R) {
+        outlineDepth++;
+    }
+
+    if (gpApplication.mGamePads[0]->mButtons.mInput & JUTGamePad::L) {
+        outlineDepth--;
+    }
+
     Mtx e_m;
     Mtx44 m;
+
+    GXTexObj tex_obj;
+
+    GXColor tev_color = {0x03, 0x03, 0x03, 0x00};
 
     f32 f_left   = 0;
     f32 f_wd     = 640;
@@ -1433,132 +1445,91 @@ void TNokiFilter::drawFilter(JDrama::TGraphics *graphics) {
     f32 f_ht     = 448;
     f32 f_right  = f_left + f_wd;
     f32 f_bottom = f_top + f_ht;
+    f32 offset_x = (1.0f / f_wd);
+    f32 offset_y = (1.0f / f_ht);
 
-    // C_MTXOrtho(m, f_top, f_bottom, f_left, f_right, 0.0f, 1.0f);
-    // PSMTXIdentity(e_m);
+    GXSetTexCopySrc(f_left, f_top, f_wd, f_ht);
+    GXSetCopyFilter(GX_FALSE, 0, GX_FALSE, nullptr);
+    GXSetTexCopyDst(640 >> 1, 448 >> 1, GX_TF_Z16, GX_TRUE);
+    GXCopyTex(gDepthBuffer, GX_FALSE);
+    GXPixModeSync();
+    GXInitTexObj(&tex_obj, gDepthBuffer, 640 >> 1, 448 >> 1, GX_TF_IA8, GX_CLAMP, GX_CLAMP, 0);
+    GXInitTexObjLOD(&tex_obj, GX_NEAR, GX_NEAR, 0.0, 0.0, 0.0, GX_FALSE, GX_FALSE, GX_ANISO_1);
+
+    C_MTXOrtho(m, f_top, f_bottom, f_left, f_right, 0.0f, 1.0f);
+    PSMTXIdentity(e_m);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_TEX1, GX_DIRECT);
 
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_U16, 0);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX1, GX_TEX_ST, GX_F32, 0);
 
     GXSetNumChans(0);
     GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
     GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
 
-    GXSetNumTexGens(1);
+    GXSetNumTexGens(2);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 0x3c, GX_FALSE, 0x7d);
-    GXLoadTexObj(&gpScreenTexture->texture->mTexObj, GX_TEXMAP0);
+    GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX1, 0x3c, GX_FALSE, 0x7d);
 
-    GXSetNumTevStages(1);
-    // Stage 0
-    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, 0xFF);
-    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
-    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
-    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
-    GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
-    GXSetTevDirect(GX_TEVSTAGE0);
+    GXLoadTexObj(&tex_obj, GX_TEXMAP0);
+
+    // Edge detect on IA8 intensity (closest-focused band only):
+    // scale each tap first, then subtract, then threshold.
+    GXSetNumTevStages(5);
+    setupDepthMap(GX_TEVSTAGE0, 200, GX_TEVPREV, GX_TEXCOORD0);  // 0-4 inclusive
+    
+    //setupDepthMap(GX_TEVSTAGE5, outlineDepth, GX_TEVREG1, GX_TEXCOORD1);  // 0-4 inclusive
+
+    /*
+    GXSetTevOrder(GX_TEVSTAGE10, GX_TEXCOORD0, GX_TEXMAP0, 0xff);
+    GXSetTevColorIn(GX_TEVSTAGE10, GX_CC_ZERO, GX_CC_ONE, GX_CC_C1, GX_CC_C0);
+    GXSetTevColorOp(GX_TEVSTAGE10, GX_TEV_SUB, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    GXSetTevDirect(GX_TEVSTAGE10);
+    
+    GXSetTevOrder(GX_TEVSTAGE11, GX_TEXCOORD1, GX_TEXMAP0, 0xff);
+    GXSetTevColorIn(GX_TEVSTAGE11, GX_CC_CPREV, GX_CC_KONST, GX_CC_CPREV, GX_CC_ZERO);
+    GXSetTevColorOp(GX_TEVSTAGE11, GX_TEV_COMP_R8_GT, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE,
+                    GX_TEVPREV);
+    GXSetTevDirect(GX_TEVSTAGE11);
+    GXSetTevKColorSel(GX_TEVSTAGE11, GX_TEV_KCSEL_K0_R);*/
+
+    GXColor edgeThreshold = {4, 0, 0, 0};
+    GXSetTevKColor(GX_KCOLOR0, edgeThreshold);
 
     GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
-    // GXSetProjection(graphics->mProjMtx, GX_PERSPECTIVE);
-    // GXSetViewport(f_left, f_top, f_wd, f_ht, 0.0, 1.0);
-    // GXSetScissor(f_left, f_top, f_wd, f_ht);
 
-    // MTXInverse(j3dSys->mViewMtx, e_m);
-    PSMTXIdentity(e_m);
-    GXLoadPosMtxImm(j3dSys->mViewMtx, 0);
-    GXSetCurrentMtx(0);
+    GXSetTevColor(GX_TEVREG0, tev_color);
+    GXSetProjection(m, GX_ORTHOGRAPHIC);
+    GXSetViewport(f_left, f_top, f_wd, f_ht, 0.0, 1.0);
+    GXSetScissor(f_left, f_top, f_wd, f_ht);
 
-    GXSetZCompLoc(GX_TRUE);
-    GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+    GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
     GXSetAlphaUpdate(GX_FALSE);
     GXSetColorUpdate(GX_TRUE);
+    GXLoadPosMtxImm(e_m, 0);
+    GXSetCurrentMtx(0);
     GXSetCullMode(GX_CULL_NONE);
+    
     GXSetBlendMode(GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_NOOP);
-
-    // -100, -4000, 1000
-    TVec3f pos(-100.0f, -4000.0f, 1000.0f);
-    // TVec3f pos(0.0f, 0.0f, 1.0f);
-
-    TVec3f &marioPos = gpCamera->mTranslation;
-
-    // --- Forward (ONLY XZ plane) ---
-    TVec3f forward = marioPos - pos;
-    forward.y      = 0.0f;
-    forward.normalize();
-
-    // Handle edge case (same position)
-    if (forward.magnitude() == 0.0f) {
-        forward = TVec3f::forward();
-    }
-
-    // --- World up stays constant ---
-    TVec3f up = TVec3f::up();
-
-    // --- Right = up � forward ---
-    TVec3f right;
-    up.cross(forward, right);
-    right.normalize();
-
-    // --- Quad size ---
-    float wd = 2000.0f;
-    float ht = 45000.0f;
-
-    float hw = wd * 0.5f;
-    float hh = ht * 0.5f;
-
-    // --- Build vertices ---
-    TVec3f v0 = pos;
-    TVec3f v1 = pos;
-    TVec3f v2 = pos;
-    TVec3f v3 = pos;
-
-    TVec3f temp;
-
-    temp = right;
-    temp.scale(-hw);
-    v0 += temp;
-    temp = up;
-    temp.scale(-hh);
-    v0 += temp;
-
-    temp = right;
-    temp.scale(hw);
-    v1 += temp;
-    temp = up;
-    temp.scale(-hh);
-    v1 += temp;
-
-    temp = right;
-    temp.scale(hw);
-    v2 += temp;
-    temp = up;
-    temp.scale(hh);
-    v2 += temp;
-
-    temp = right;
-    temp.scale(-hw);
-    v3 += temp;
-    temp = up;
-    temp.scale(hh);
-    v3 += temp;
-
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-
-    GXPosition3f32(v0.x, v0.y, v0.z);
-    GXTexCoord2f32(0.0f, 1.0f);
-
-    GXPosition3f32(v1.x, v1.y, v1.z);
-    GXTexCoord2f32(1.0f, 1.0f);
-
-    GXPosition3f32(v2.x, v2.y, v2.z);
-    GXTexCoord2f32(1.0f, 0.0f);
-
-    GXPosition3f32(v3.x, v3.y, v3.z);
-    GXTexCoord2f32(0.0f, 0.0f);
-
+    GXPosition2u16(f_left, f_top);
+    GXTexCoord2f32(-offset_x, 0.0f);
+    GXTexCoord2f32(offset_x, 0.0f);
+    GXPosition2u16(f_left + f_wd, f_top);
+    GXTexCoord2f32(1.0f - offset_x, 0.0f);
+    GXTexCoord2f32(1.0f + offset_x, 0.0f);
+    GXPosition2u16(f_left + f_wd, f_top + f_ht);
+    GXTexCoord2f32(1.0f - offset_x, 1.0f);
+    GXTexCoord2f32(1.0f + offset_x, 1.0f);
+    GXPosition2u16(f_left, f_top + f_ht);
+    GXTexCoord2f32(-offset_x, 1.0f);
+    GXTexCoord2f32(+offset_x, 1.0f);
     GXEnd();
+
 }
 
 void TFogFilter::load(JSUMemoryInputStream &stream) {

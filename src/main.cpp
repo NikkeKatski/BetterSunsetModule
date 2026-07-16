@@ -39,6 +39,9 @@
 #include "SMS/macros.h"
 #include <SMS/GC2D/SelectDir.hxx>
 
+#include <SMS/System/MovieDirector.hxx>
+#include <SMS/Manager/FlagManager.hxx>
+
 //#include <Dolphin/THP.h>
 
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
@@ -539,7 +542,7 @@ void grassColorInit(TMarDirector *director) {
 u32** gpBeamManager = (u32**)(0x8040d8d0);
 bool inited = false;
 void drawNoki8Beam(TMarDirector* marDirector) {
-
+    
     // Darker ropes
     BetterSMS::PowerPC::writeU32((u32 *)0x8040DEBC, 0x7D766AFF);
     BetterSMS::PowerPC::writeU32((u32 *)0x8040DEC0, 0x635C50FF);
@@ -708,6 +711,96 @@ void rsetup_setupThreadFunc_TSelectDir_Override(TSelectDir* selectDir, void* par
     rsetup__10TSelectDirFv(selectDir, param_1);
 }
 SMS_PATCH_BL(0x801773ec, rsetup_setupThreadFunc_TSelectDir_Override);
+
+// Fix shine select bars on close
+SMS_WRITE_32(0x80174208, 0x388000ff);
+SMS_WRITE_32(0x8017420c, 0x38a000ff);
+SMS_WRITE_32(0x80174210, 0x388000ff);
+
+SMS_WRITE_32(0x80174228, 0x388000ff);
+SMS_WRITE_32(0x8017422C, 0x38a000ff);
+SMS_WRITE_32(0x80174230, 0x388000ff);
+
+SMS_WRITE_32(0x8017424c, 0x388000ff);
+SMS_WRITE_32(0x80174250, 0x38a000ff);
+SMS_WRITE_32(0x80174254, 0x388000ff);
+
+SMS_WRITE_32(0x8017426c, 0x388000ff);
+SMS_WRITE_32(0x80174270, 0x38a000ff);
+SMS_WRITE_32(0x80174274, 0x388000ff);
+
+SMS_WRITE_32(0x801742f8, 0x388000ff);
+SMS_WRITE_32(0x801742fC, 0x38a000ff);
+SMS_WRITE_32(0x80174300, 0x388000ff);
+
+SMS_WRITE_32(0x80174318, 0x388000ff);
+SMS_WRITE_32(0x8017431C, 0x38a000ff);
+SMS_WRITE_32(0x80174320, 0x388000ff);
+
+SMS_WRITE_32(0x8017433c, 0x388000ff);
+SMS_WRITE_32(0x80174340, 0x38a000ff);
+SMS_WRITE_32(0x80174344, 0x388000ff);
+
+SMS_WRITE_32(0x8017435c, 0x388000ff);
+SMS_WRITE_32(0x80174360, 0x38a000ff);
+SMS_WRITE_32(0x80174364, 0x388000ff);
+
+// Load level after epilogue
+u32* nextMovieRef = (u32*)0x803e9718;
+s32 TMovieDirector_decideNextMode_override(TMovieDirector* director, s32* param_1) {
+	u32 nextMovie = *nextMovieRef;
+    //if(forceMovie) {
+    //    *nextMovieRef = 16;
+    //    forceMovie = false;
+    //    OSReport("WHYYYY!!");
+    //    return 6;
+    //}
+    u32 preparam1 = *param_1;
+
+	s32 response = director->decideNextMode(param_1);
+    if(nextMovie == 17) {
+        TFlagManager::smInstance->setFlag(0x20012, 1);
+		gpApplication.mNextScene.set(1, decideNextScenario__FUc(1), 0);
+        *param_1 = preparam1;
+		return 5;
+    }
+	// Next movie is staff roll
+	if(nextMovie == 14 && response == 6) {
+		*nextMovieRef = 0x0;
+		gpApplication.mNextScene.set(12, 4, 0);
+		return 5;
+	}
+	return response;
+}
+SMS_PATCH_BL(SMS_PORT_REGION(0x802b5f48, 0, 0, 0), TMovieDirector_decideNextMode_override);
+SMS_PATCH_BL(SMS_PORT_REGION(0x802b606c, 0, 0, 0), TMovieDirector_decideNextMode_override);
+
+void setNextStage_evSetNextStage_override(TMarDirector* director, u16 stage, JDrama::TActor *actor) {
+    if(stage == 0xFF) {
+        // What to do after credits?
+        gpApplication.mCutSceneID = 16;
+        director->mGameState |= 0x100;
+        director->setNextStage(stage, actor);
+    } else {
+        director->setNextStage(stage, actor);
+    }
+}
+SMS_PATCH_BL(0x80290194, setNextStage_evSetNextStage_override);
+
+int changeState_TMarDirector_override(TMarDirector* director) {
+    u32 shineCount = TFlagManager::smInstance->getFlag(0x40000);
+    u32 curState = director->mCurState;
+    if(curState == 0 && shineCount >= 120 && !TFlagManager::smInstance->getFlag(0x20012)) {
+		*nextMovieRef = 17;
+        return 6;
+    }
+    return director->changeState();
+
+}
+SMS_PATCH_BL(0x80299d0c, changeState_TMarDirector_override);
+
+// Show the spark on save after 121st shine
+SMS_WRITE_32(0x8016725c, 0x28000079);
 
 static void initModule() {
     OSReport("Initializing Module...\n");

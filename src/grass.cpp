@@ -1,6 +1,8 @@
 #include <grass.hxx>
+#include <macros.h>
+#include <SMS/Player/Mario.hxx>
+#include <SMS/Manager/MarioParticleManager.hxx>
 
-#if 1
 void initGrassShade(TGrassGroup *grassGroup) {
     if (grassGroup->data2[0x8])
         return;
@@ -107,4 +109,67 @@ void altDrawNear(TGrassGroup *grassGroup) {
     return;
 }
 SMS_PATCH_B(0x801e99a8, altDrawNear);
+
+#if 0
+u32 altDrawRotDirectional(u32 r3) { //THIS IS NOT REPLACING A FUNCTION, IT IS INJECTED INTO ONE!!! DONT QUESTION MY METHODS.
+    u32 r1 = r3;
+    float d8, d7, d6;
+    u32 r30;
+    SMS_FROM_GPR(30, r30);
+    d8 = *(float *)(r30 + 0x2c);
+    d7 = *(float *)(r30 + 0x30);
+    d6 = *(float *)(r30 + 0x34);
+
+    float spF0 = *(float *)(r1 + 0xF0);
+    float spF4 = *(float *)(r1 + 0xF4);
+    float spF8 = *(float *)(r1 + 0xF8);
+    float spFC = *(float *)(r1 + 0xFC);
+    float sp100 = *(float *)(r1 + 0x100);
+    float sp104 = *(float *)(r1 + 0x104);
+    float sp108 = *(float *)(r1 + 0x108);
+    float sp10C = *(float *)(r1 + 0x10C);
+    float sp110 = *(float *)(r1 + 0x110);
+    float sp114 = *(float *)(r1 + 0x114);
+    float sp118 = *(float *)(r1 + 0x118);
+    float sp11C = *(float *)(r1 + 0x11C);
+
+    float x1 = spF0 + d8, x2 = spFC + d8, x3 = sp108 + d8, x4 = sp114 + d8;
+    float y1 = spF4 + d7, y2 = sp100 + d7, y3 = sp10C + d7, y4 = sp118 + d7;
+    float z1 = spF8 + d6, z2 = sp104 + d6, z3 = sp110 + d6, z4 = sp11C + d6;
+
+
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_S16, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_POS_XYZ, GX_U8, 0);
+    GXBegin(GX_QUADS, 0, 4);
+    GXPosition3s16(x1, y1, z1);
+    GXTexCoord2u8(0, 0);
+    GXPosition3s16(x2, y2, z2);
+    GXTexCoord2u8(1, 0);
+    GXPosition3s16(x3, y3, z3);
+    GXTexCoord2u8(1, 1);
+    GXPosition3s16(x4,y4,z4);
+    GXTexCoord2u8(0, 1);
+
+    u32 ret = 0xcc010000;
+    return ret;
+}
+SMS_PATCH_BL(0x803314f8, altDrawRotDirectional);
+SMS_WRITE_32(0x8033151c, 0x480000b8); //Jump
+SMS_WRITE_32(0x803314f4, 0x7c230b78); //r1 to r3
 #endif
+
+void handleBurnCol(TMario* player, bool cool) {
+    if (player->mState == TMario::STATE_FIRE_HIT || player->mHealth == 0) {
+        return;
+    }
+    if (player->mFloorTriangle->mType == 0x905 && (player->mTranslation.y - player->mFloorBelow) <= 20.f) {
+        player->decHP(1);
+        player->changePlayerStatus(TMario::STATE_FIRE_HIT, 0, false);
+        //emitAndBindToPosPtr__21TMarioParticleManagerFlPCQ29JGeometry8TVec3_f
+        gpMarioParticleManager->emitAndBindToPosPtr(6, &player->mTranslation, 0, nullptr);
+        player->startSoundActor(6163);
+    }
+}

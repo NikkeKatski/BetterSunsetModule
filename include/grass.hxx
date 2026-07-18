@@ -47,3 +47,5 @@ static const TBGCheckData *floorBuffer = new TBGCheckData;
 void initGrassShade(TGrassGroup *grassGroup);
 
 void altDrawNear(TGrassGroup *grassGroup);
+
+void handleBurnCol(TMario *player, bool cool);

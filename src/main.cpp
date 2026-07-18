@@ -41,6 +41,7 @@
 
 #include <SMS/System/MovieDirector.hxx>
 #include <SMS/Manager/FlagManager.hxx>
+#include <BetterSMS/player.hxx>
 
 //#include <Dolphin/THP.h>
 
@@ -819,6 +820,7 @@ static void initModule() {
 
     BetterSMS::Stage::addUpdateCallback(drawNoki8Beam);
     BetterSMS::Stage::addInitCallback(initCallback);
+    BetterSMS::Player::addUpdateCallback(handleBurnCol);
 
     // Register settings
     sSunsetSettingsGroup.addSetting(&sBlurFilter);
@@ -832,7 +834,7 @@ static void initModule() {
     sCreditsGroup.addSetting(&LeadComposer);
     sCreditsGroup.addSetting(&PizzaGuy);
     sCreditsGroup.addSetting(&ModuleDev);
-    sCreditsGroup.addSetting(&Placeholder);
+    //sCreditsGroup.addSetting(&Placeholder);
     
     {
         auto &saveInfo        = sSunsetSettingsGroup.getSaveInfo();
@@ -869,7 +871,7 @@ static void initModule() {
 }
 
 // Definition block
-KURIBO_MODULE_BEGIN("Sunset Module", "Axolotl", "v1.0") {
+KURIBO_MODULE_BEGIN("Sunset Module", "Nikke 3 & Azack", "v1.0") {
     // Set the load and unload callbacks to our registration functions
     KURIBO_EXECUTE_ON_LOAD { initModule(); }
 }

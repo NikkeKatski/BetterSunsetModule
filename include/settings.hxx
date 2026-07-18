@@ -56,7 +56,7 @@ private:
 
 class sLeadCoderSetting final : public BetterSMS::Settings::IntSetting {
 public:
-    sLeadCoderSetting() : IntSetting("Lead Coder", &mIndex) {
+    sLeadCoderSetting() : IntSetting("Lead Coder & Shaders", &mIndex) {
         mValueRange = {0, (sizeof(sLeadCoder) / sizeof(const char *)) - 1, 1};
     }
     ~sLeadCoderSetting() override {}
@@ -86,7 +86,7 @@ private:
 
 class sPizzaGuySetting final : public BetterSMS::Settings::IntSetting {
 public:
-    sPizzaGuySetting() : IntSetting("Buys Pizza", &mIndex) {
+    sPizzaGuySetting() : IntSetting("Stage Dev", &mIndex) {
         mValueRange = {0, (sizeof(sPizzaGuy) / sizeof(const char *)) - 1, 1};
     }
     ~sPizzaGuySetting() override {}
@@ -101,7 +101,7 @@ private:
 
 class sModuleDevSetting final : public BetterSMS::Settings::IntSetting {
 public:
-    sModuleDevSetting() : IntSetting("Module Code", &mIndex) {
+    sModuleDevSetting() : IntSetting("Module Code & Moveset", &mIndex) {
         mValueRange = {0, (sizeof(sModuleDev) / sizeof(const char *)) - 1, 1};
     }
     ~sModuleDevSetting() override {}

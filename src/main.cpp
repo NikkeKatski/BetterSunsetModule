@@ -889,6 +889,67 @@ SMS_PATCH_BL(0x8028a9f4, flashBangScreen);
 SMS_WRITE_32(SMS_PORT_REGION(0x802B5E8C, 0x802ade20, 0, 0), 0x38600001);
 SMS_WRITE_32(SMS_PORT_REGION(0x802B5EF4, 0x802ade88, 0, 0), 0x38600001);
 
+
+// Force specific fruit in party plaza
+#define RAND_MAX 32767
+inline f32 MsRandF() { return rand() * (1.f / (RAND_MAX + 1)); }
+
+void decideRandomLoveFruit_TEggYoshi_override(TEggYoshi* that)
+{
+	u8 map = gpMarDirector->mAreaID;
+
+	if (map == 7 && gpMarDirector->mEpisodeID == 1) {
+		that->mWantedFruit = 0x40000392;
+		return;
+	}
+
+	if (map == 3) {
+		that->mWantedFruit = 0x40000393;
+		return;
+	}
+
+	if (map == 1 && strcmp(that->mKeyName, "ヨッシーの卵（影マリオ用）") == 0) {
+		that->mWantedFruit = 0x40000394;
+		return;
+	}
+    
+    if(gpMarDirector->mAreaID == 12 && gpMarDirector->mEpisodeID == 4) {
+	    int r = 3 * MsRandF();
+	    switch (r) {
+	    case 0:
+		    that->mWantedFruit = 0x40000394;
+		    break;
+	    case 1:
+		    that->mWantedFruit = 0x40000391;
+		    break;
+	    default:
+		    that->mWantedFruit = 0x40000390;
+		    break;
+	    }
+
+        return;
+    }
+
+	int r = 4 * MsRandF();
+	switch (r) {
+	case 0:
+		that->mWantedFruit = 0x40000394;
+		break;
+	case 1:
+		that->mWantedFruit = 0x40000391;
+		break;
+	case 2:
+		that->mWantedFruit = 0x40000392;
+		break;
+	default:
+		that->mWantedFruit = 0x40000390;
+		break;
+	}
+}
+SMS_PATCH_BL(0x801bc03c, decideRandomLoveFruit_TEggYoshi_override);
+SMS_PATCH_BL(0x801bc1e0, decideRandomLoveFruit_TEggYoshi_override);
+SMS_PATCH_BL(0x801bc2c8, decideRandomLoveFruit_TEggYoshi_override);
+
 static void initModule() {
     OSReport("Initializing Module...\n");
 

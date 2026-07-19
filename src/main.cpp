@@ -44,6 +44,9 @@
 #include <BetterSMS/player.hxx>
 #include <SMS/Camera/CubeManagerBase.hxx>
 
+#include <BetterSMS/sunscript.hxx>
+#include <SMS/MSound/MSoundSESystem.hxx>
+
 //#include <Dolphin/THP.h>
 
 SMS_WRITE_32(SMS_PORT_REGION(0x801494C0, 0, 0, 0), 0x3fc0ad77);  // Something about water_back color
@@ -540,7 +543,7 @@ void grassColorInit(TMarDirector *director) {
 //}
 //SMS_PATCH_BL(SMS_PORT_REGION(0x80296DE0, 0, 0, 0), initStageLoading);
 
-
+TFlashBangFilter* flashBangFilter = nullptr;
 u32** gpBeamManager = (u32**)(0x8040d8d0);
 bool inited = false;
 void drawNoki8Beam(TMarDirector* marDirector) {
@@ -563,6 +566,13 @@ void drawNoki8Beam(TMarDirector* marDirector) {
             TSubtleOutline* sunsetFilter = (TSubtleOutline*)TSubtleOutline::instantiate();
             sunsetFilter->mVisible = true;
             sunsetFilter->inject();
+        }
+
+        flashBangFilter = nullptr;
+        if(marDirector->mAreaID == 12 && marDirector->mEpisodeID == 4) {
+            flashBangFilter = (TFlashBangFilter*)TFlashBangFilter::instantiate();
+            flashBangFilter->mVisible = true;
+            flashBangFilter->inject();
         }
 
         //if(marDirector->mAreaID == 16) {
@@ -825,6 +835,54 @@ SMS_WRITE_32(0x8016725c, 0x28000079);
 //}
 //SMS_PATCH_BL(0x8030d784, setParam_TOuterParam);
 
+bool isGuideDisabled = false;
+
+void movement_game_override(TMarDirector* that) {
+    // Do not allow talking in credits
+    if(that->mAreaID != 12 && that->mEpisodeID != 4) {
+        that->movement_game();
+        // Enable guide / pause / ui
+        if(isGuideDisabled) {
+            PowerPC::writeU32((u32 *)0x80297A60, 0x5400077B);
+            PowerPC::writeU32((u32 *)0x80297adc, 0x3ba00005);
+            PowerPC::writeU32((u32 *)0x80299CF0, 0x3880FFFF);
+            isGuideDisabled = false;
+        }
+    }
+    else {
+        // Disable guide / pause / ui
+        //if(!isGuideDisabled) {
+            PowerPC::writeU32((u32 *)0x80297A60, 0x70000000);
+            PowerPC::writeU32((u32 *)0x80297adc, 0x3ba00004);
+            PowerPC::writeU32((u32 *)0x80299CF0, 0x3880FFEF);
+            isGuideDisabled = true;
+        //}
+    }
+}
+SMS_PATCH_BL(0x8029a4c8, movement_game_override);
+
+void onPlayerInit(TMario* player, bool isMario) {
+    if(gpMarDirector->mAreaID == 12 && gpMarDirector->mEpisodeID == 4) {
+        player->mAttributes.mHasFludd = false;
+    }
+}
+
+// TODO: Make sunscript
+void flashBangScreen(const JGeometry::TVec3<f32>& dest, f32 angle) {
+	//interp->verifyArgNum(0, &argc);
+
+    SMS_MarioWarpRequest__FRCQ29JGeometry8TVec3_f(dest, angle);
+    if(gpMarDirector->mAreaID == 12 && gpMarDirector->mEpisodeID == 4) {
+        flashBangFilter->mFlashIntensity = 248;
+        u32 soundId = 0x3883;
+        if(gpMSound->gateCheck(soundId)) {
+            JAISound* sound = MSoundSESystem::MSoundSE::startSoundActor(soundId, gpMarioOriginal->mTranslation, 0, nullptr, 0, 4);
+        }
+    }
+
+}
+
+SMS_PATCH_BL(0x8028a9f4, flashBangScreen);
 
 static void initModule() {
     OSReport("Initializing Module...\n");
@@ -842,9 +900,13 @@ static void initModule() {
     BetterSMS::Objects::registerObjectAsMapObj("TextureBlock", &textureBlockData, TTextureBlock::instantiate);
     BetterSMS::Objects::registerObjectAsMapObj("BellGame", &bellgameData, TBellGame::instantiate);
 
+    
+    //Spc::registerBuiltinFunction("flashBangScreen", flashBangScreen);
+
     BetterSMS::Stage::addUpdateCallback(drawNoki8Beam);
     BetterSMS::Stage::addInitCallback(initCallback);
     BetterSMS::Player::addUpdateCallback(handleBurnCol);
+    BetterSMS::Player::addInitCallback(onPlayerInit);
 
     // Register settings
     sSunsetSettingsGroup.addSetting(&sBlurFilter);

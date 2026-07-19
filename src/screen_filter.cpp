@@ -1628,3 +1628,93 @@ void TFogFilter::drawFilter(JDrama::TGraphics *graphics) {
 	GXEnd();
 	
 }
+
+void TFlashBangFilter::perform(u32 cue, JDrama::TGraphics *graphics) {
+    //OSReport("Hmmm %d %d\n", cue & 1, mFlashIntensity);
+    //if(cue & 1) {
+        if(mFlashIntensity > 0) {
+            mFlashIntensity-=8;
+        }
+    //}
+    TScreenFilter::perform(cue, graphics);
+
+}
+
+void TFlashBangFilter::drawFilter(JDrama::TGraphics *graphics) {
+
+    u16 x  = 0;
+    u16 y  = 0;
+    u16 wd = 640;
+    u16 ht = 448;
+
+    Mtx e_m;
+    Mtx44 m;
+
+    GXTexObj tex_obj;
+
+    GXColor tev_color = {0x03, 0x03, 0x03, 0x00};
+
+    f32 f_left   = 0;
+    f32 f_wd     = 640;
+    f32 f_top    = 0;
+    f32 f_ht     = 448;
+    f32 f_right  = f_left + f_wd;
+    f32 f_bottom = f_top + f_ht;
+
+
+    C_MTXOrtho(m, f_top, f_bottom, f_left, f_right, 0.0f, 1.0f);
+    PSMTXIdentity(e_m);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_U16, 0);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+    GXSetNumTexGens(1);
+    GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, 0x3c, GX_FALSE, 0x7d);
+
+    GXLoadTexObj(&gpScreenTexture->texture->mTexObj, GX_TEXMAP0);
+
+    GXSetNumTevStages(1);
+
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP1, 0xff);
+    GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_KONST);
+    GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO,
+	                GX_CA_ZERO);
+	GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+	                GX_TRUE, GX_TEVPREV);
+    GXSetTevDirect(GX_TEVSTAGE0);
+    GXSetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_K0);
+
+
+    GXColor flashColor = {mFlashIntensity, mFlashIntensity, mFlashIntensity, mFlashIntensity};
+    GXSetTevKColor(GX_KCOLOR0, flashColor);
+
+    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
+
+    GXSetTevColor(GX_TEVREG0, tev_color);
+    GXSetProjection(m, GX_ORTHOGRAPHIC);
+    GXSetViewport(f_left, f_top, f_wd, f_ht, 0.0, 1.0);
+    GXSetScissor(f_left, f_top, f_wd, f_ht);
+
+	GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	GXSetAlphaUpdate(GX_FALSE);
+	GXSetColorUpdate(GX_TRUE);
+	GXLoadPosMtxImm(e_m, 0);
+	GXSetCurrentMtx(0);
+	GXSetCullMode(GX_CULL_NONE);
+	
+	GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_OR);
+	GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+	GXPosition2u16(f_left, f_top);
+	GXTexCoord2f32(0.0f, 0.0f);
+	GXPosition2u16(f_left + f_wd, f_top);
+	GXTexCoord2f32(1.0f, 0.0f);
+	GXPosition2u16(f_left + f_wd, f_top + f_ht);
+	GXTexCoord2f32(1.0f, 1.0f);
+	GXPosition2u16(f_left, f_top + f_ht);
+	GXTexCoord2f32(0.0f, 1.0f);
+	GXEnd();
+}

@@ -163,3 +163,21 @@ public:
     u8 mG;
     u8 mB;
 };
+
+
+class TFlashBangFilter : public TScreenFilter {
+public:
+    BETTER_SMS_FOR_CALLBACK static JDrama::TNameRef *instantiate() {
+        return new TFlashBangFilter("FlashBangFilter");
+    }
+
+    TFlashBangFilter(const char *name) : TScreenFilter(name), mFlashIntensity(0) {
+        mUsesScreenTexture = false;
+        mUsesDepthBuffer = false;
+    }
+
+    virtual void perform(u32, JDrama::TGraphics *) override;
+    void drawFilter(JDrama::TGraphics *graphics) override;
+
+    u8 mFlashIntensity;
+};

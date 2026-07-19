@@ -884,6 +884,11 @@ void flashBangScreen(const JGeometry::TVec3<f32>& dest, f32 angle) {
 
 SMS_PATCH_BL(0x8028a9f4, flashBangScreen);
 
+
+// Allow skipping cutscenes
+SMS_WRITE_32(SMS_PORT_REGION(0x802B5E8C, 0x802ade20, 0, 0), 0x38600001);
+SMS_WRITE_32(SMS_PORT_REGION(0x802B5EF4, 0x802ade88, 0, 0), 0x38600001);
+
 static void initModule() {
     OSReport("Initializing Module...\n");
 

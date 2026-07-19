@@ -42,6 +42,7 @@
 #include <SMS/System/MovieDirector.hxx>
 #include <SMS/Manager/FlagManager.hxx>
 #include <BetterSMS/player.hxx>
+#include <SMS/Camera/CubeManagerBase.hxx>
 
 //#include <Dolphin/THP.h>
 
@@ -777,6 +778,7 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x802b5f48, 0, 0, 0), TMovieDirector_decideNextMode
 SMS_PATCH_BL(SMS_PORT_REGION(0x802b606c, 0, 0, 0), TMovieDirector_decideNextMode_override);
 
 void setNextStage_evSetNextStage_override(TMarDirector* director, u16 stage, JDrama::TActor *actor) {
+    OSReport("HMMM %X %d\n", stage, director->mAreaID);
     if(stage == 0xFF) {
         // What to do after credits?
         gpApplication.mCutSceneID = 16;
@@ -795,7 +797,18 @@ int changeState_TMarDirector_override(TMarDirector* director) {
 		*nextMovieRef = 17;
         return 6;
     }
-    return director->changeState();
+    s32 ret = director->changeState();
+    if (director->mAreaID == 15 && director->mEpisodeID == 0) {
+        if (gpCubeCamera->getInCubeNo(*(Vec *)gpMarioPos) > 0) {
+            TSMSFader *fader = gpApplication.mFader;
+            if (fader->mFadeStatus == TSMSFader::FADE_OFF) {
+                fader->startFadeoutT(0.4f);
+            } else if (fader->mFadeStatus == TSMSFader::FADE_ON) {
+                ret = 10;
+            }
+        }
+    }
+    return ret;
 
 }
 SMS_PATCH_BL(0x80299d0c, changeState_TMarDirector_override);
@@ -803,12 +816,23 @@ SMS_PATCH_BL(0x80299d0c, changeState_TMarDirector_override);
 // Show the spark on save after 121st shine
 SMS_WRITE_32(0x8016725c, 0x28000079);
 
+//// Fix sound glitch
+//SMS_WRITE_32(0x8030d560, 0x60000000);
+//
+//void setParam_TOuterParam(void* outerParam, u8 param_1, f32 tempo) {
+//    setParam__Q38JASystem6TTrack11TOuterParamFUcf(outerParam, param_1, tempo);
+//    onSwitch__Q38JASystem6TTrack11TOuterParamFUs(outerParam, param_1);
+//}
+//SMS_PATCH_BL(0x8030d784, setParam_TOuterParam);
+
+
 static void initModule() {
     OSReport("Initializing Module...\n");
 
     // Register callbacks
     BetterSMS::Stage::addInitCallback(grassColorInit);
     
+    BetterSMS::Stage::addInitCallback(initFilters);
     BetterSMS::Stage::addUpdateCallback(updateFilters);
     BetterSMS::Objects::registerObjectAsMisc("SunsetFilter", TSunsetFilter::instantiate);
     BetterSMS::Objects::registerObjectAsMisc("SpookyFilter", TSpookyFilter::instantiate);

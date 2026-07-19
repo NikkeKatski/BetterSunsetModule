@@ -37,12 +37,6 @@ void initFilters(TMarDirector *marDirector) {
 }
 
 void updateFilters(TMarDirector *) {
-    if (gIsFirstUpdate) {
-        if (gUsesDepthBuffer && !gInitDepthBuffer) {
-            gDepthBuffer = new u32[640 * 448 / 2];
-        }
-        gIsFirstUpdate = false;
-    }
 
     if (gUsesScreenTexture) {
         gUpdateScreenTexture = true;

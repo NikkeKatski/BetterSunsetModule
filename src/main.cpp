@@ -788,7 +788,6 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x802b5f48, 0, 0, 0), TMovieDirector_decideNextMode
 SMS_PATCH_BL(SMS_PORT_REGION(0x802b606c, 0, 0, 0), TMovieDirector_decideNextMode_override);
 
 void setNextStage_evSetNextStage_override(TMarDirector* director, u16 stage, JDrama::TActor *actor) {
-    OSReport("HMMM %X %d\n", stage, director->mAreaID);
     if(stage == 0xFF) {
         // What to do after credits?
         gpApplication.mCutSceneID = 16;
@@ -839,7 +838,7 @@ bool isGuideDisabled = false;
 
 void movement_game_override(TMarDirector* that) {
     // Do not allow talking in credits
-    if(that->mAreaID != 12 && that->mEpisodeID != 4) {
+    if(that->mAreaID != 12 || that->mEpisodeID != 4) {
         that->movement_game();
         // Enable guide / pause / ui
         if(isGuideDisabled) {

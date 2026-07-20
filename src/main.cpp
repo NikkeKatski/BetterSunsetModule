@@ -802,7 +802,7 @@ SMS_PATCH_BL(0x80290194, setNextStage_evSetNextStage_override);
 int changeState_TMarDirector_override(TMarDirector* director) {
     u32 shineCount = TFlagManager::smInstance->getFlag(0x40000);
     u32 curState = director->mCurState;
-    if(curState == 0 && shineCount >= 120 && !TFlagManager::smInstance->getFlag(0x20012)) {
+    if(curState == 0 && shineCount >= 120 && !TFlagManager::smInstance->getFlag(0x20012) && director->mAreaID == 1) {
 		*nextMovieRef = 17;
         return 6;
     }
